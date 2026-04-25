@@ -1,0 +1,191 @@
+/* 
+   NightR41d.exe — Global Styles
+   Student Burnout Prevention System
+*/
+
+:root {
+  --color-low: #4ade80;
+  --color-moderate: #facc15;
+  --color-high: #f87171;
+  --color-primary: #818cf8;
+  --color-bg: #0f1117;
+  --color-surface: #1e2130;
+  --color-border: #2e3347;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+}
+
+/* RESET & BASE */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* LAYOUT */
+.container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+section {
+  margin-bottom: 2.5rem;
+}
+
+/* TYPOGRAPHY */
+h1 {
+  font-family: 'Space Mono', monospace;
+  font-size: 2.5rem;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+
+h2 {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.25rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1.25rem;
+}
+
+p {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+
+label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* HEADER */
+header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+header .tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-top: 0.5rem;
+}
+
+/* CARDS / SURFACES */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* FORM INPUTS */
+.input-group {
+  margin-bottom: 1.5rem;
+}
+
+input[type="number"] {
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #ffffff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+input[type="number"]:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* SUBMIT BUTTON */
+#submit-btn {
+  width: 100%;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-family: 'Space Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+#submit-btn:hover {
+  background-color: #6366f1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(129, 140, 248, 0.4);
+}
+
+#submit-btn:active {
+  transform: translateY(0);
+}
+
+/* UTILITY CLASSES */
+.hidden {
+  display: none !important;
+}
+
+.text-low { color: var(--color-low); }
+.text-moderate { color: var(--color-moderate); }
+.text-high { color: var(--color-high); }
+
+/* FOOTER */
+footer {
+  text-align: center;
+  padding: 2rem 0;
+  margin-top: 4rem;
+  border-top: 1px solid var(--color-border);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* RESPONSIVE */
+@media (max-width: 480px) {
+  .container {
+    padding: 1.5rem 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  .card {
+    padding: 1.25rem;
+  }
+}

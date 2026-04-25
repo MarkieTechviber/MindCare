@@ -1,0 +1,23 @@
+# NightR41d — Student Burnout Prevention System
+# This file specifies which files should be ignored by Git.
+# .env is the most important entry to keep API keys secret.
+
+# Secrets
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor folders
+.vscode/
+.idea/
+
+# Local notes
+notes.txt
+scratch.*
+todo.txt
+
+# Large assets
+assets/audio/

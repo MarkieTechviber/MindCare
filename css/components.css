@@ -1,0 +1,263 @@
+/* 
+   NightR41d.exe — Component Styles
+   Individual UI Components
+*/
+
+/* WELLNESS TIP CARD */
+#wellness-tip-container {
+  margin-bottom: 2.5rem;
+}
+
+#wellness-tip {
+  border-left: 4px solid var(--color-primary);
+  background-color: rgba(129, 140, 248, 0.05);
+}
+
+#wellness-tip p {
+  font-style: italic;
+  color: var(--color-text);
+}
+
+/* EMOTION SELECTOR */
+#emotion-selector {
+  margin-bottom: 1.5rem;
+}
+
+.emotion-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.emotion-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px;
+  border: 2px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.emotion-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+/* Selected States */
+.emotion-btn.selected[data-label="Energetic"] {
+  border-color: #4ade80;
+  color: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
+}
+
+.emotion-btn.selected[data-label="Normal"] {
+  border-color: #facc15;
+  color: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+}
+
+.emotion-btn.selected[data-label="Stressed"] {
+  border-color: #fb923c;
+  color: #fb923c;
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.2);
+}
+
+.emotion-btn.selected[data-label="Exhausted"] {
+  border-color: #f87171;
+  color: #f87171;
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.2);
+}
+
+.emotion-btn.selected[data-label="Overwhelmed"] {
+  border-color: #ef4444;
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+/* LOADING SPINNER */
+#loading-spinner {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(129, 140, 248, 0.1);
+  border-top: 4px solid var(--color-primary);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#loading-spinner p {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* SCORE CARD */
+#score-card {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+#score-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 4rem;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+#score-level {
+  display: inline-block;
+  padding: 0.25rem 1rem;
+  border-radius: 50px;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.score-low {
+  background-color: rgba(74, 222, 128, 0.1);
+  color: var(--color-low);
+}
+
+.score-moderate {
+  background-color: rgba(250, 204, 21, 0.1);
+  color: var(--color-moderate);
+}
+
+.score-high {
+  background-color: rgba(248, 113, 113, 0.1);
+  color: var(--color-high);
+}
+
+/* Level Borders for Score Card */
+#score-card.score-low { border-top: 4px solid var(--color-low); }
+#score-card.score-moderate { border-top: 4px solid var(--color-moderate); }
+#score-card.score-high { border-top: 4px solid var(--color-high); }
+
+/* AI ADVICE CARD */
+#ai-advice-card {
+  border-left: 4px solid var(--color-primary);
+  background-color: rgba(129, 140, 248, 0.03);
+  animation: slideUpFade 0.4s ease forwards;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#ai-advice-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #ffffff;
+}
+
+/* HISTORY LIST */
+#history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.history-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.history-emotion {
+  padding: 0.2rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.history-score {
+  font-family: 'Space Mono', monospace;
+  font-weight: bold;
+}
+
+.empty-history {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 2rem 0;
+}
+
+/* CLEAR HISTORY BUTTON */
+#clear-history-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+#clear-history-btn:hover {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+/* STREAK SECTION */
+#streak-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(251, 146, 60, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(251, 146, 60, 0.2);
+}
+
+.streak-icon {
+  font-size: 1.2rem;
+}
+
+#streak-count {
+  font-family: 'Space Mono', monospace;
+  font-weight: bold;
+  color: #fb923c;
+}
