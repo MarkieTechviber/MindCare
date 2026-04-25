@@ -5,7 +5,7 @@
 
 import { emotionToValue, calculateBurnoutScore, getScoreLevel } from './score.js';
 import { getGroqAdvice } from './groq.js';
-import { saveCheckin, getHistory, clearHistory } from './firebase.js';
+import { saveCheckin, getHistory } from './firebase.js';
 
 // --- WELLNESS TIPS ---
 const WELLNESS_TIPS = [
@@ -26,15 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initWellnessTip();
     initEmotionSelector();
     renderHistory();
-    updateStreak();
-    
+
     // Listen for form submission
     const checkinForm = document.getElementById('checkin-form');
     checkinForm.addEventListener('submit', handleCheckin);
-
-    // Listen for clear history
-    const clearBtn = document.getElementById('clear-history-btn');
-    clearBtn.addEventListener('click', handleClearHistory);
 });
 
 function initWellnessTip() {
@@ -67,20 +62,20 @@ async function handleCheckin(e) {
     e.preventDefault();
 
     // 1. Gather Inputs
-    const sleep = parseFloat(document.getElementById('sleep-hrs').value);
-    const study = parseFloat(document.getElementById('study-hrs').value);
-    const tasks = parseInt(document.getElementById('pending-tasks').value);
-    const lastBreak = parseInt(document.getElementById('last-break').value);
+    const sleepHours = parseFloat(document.getElementById('sleep-hrs').value);
+    const studyHours = parseFloat(document.getElementById('study-hrs').value);
+    const pendingTasks = parseInt(document.getElementById('pending-tasks').value);
+    const daysSinceBreak = parseInt(document.getElementById('last-break').value);
     const emotionLabel = document.getElementById('selected-emotion-label').value;
     const emotionValue = parseInt(document.getElementById('selected-emotion-value').value);
 
-    // Validate
+    // 2. Validate
     if (!emotionLabel) {
         alert("Please select how you are feeling!");
         return;
     }
 
-    // 2. UI State: Loading
+    // 3. UI State: Loading
     const loadingSpinner = document.getElementById('loading-spinner');
     const resultSection = document.getElementById('result-section');
     const submitBtn = document.getElementById('submit-btn');
@@ -90,44 +85,86 @@ async function handleCheckin(e) {
     submitBtn.disabled = true;
 
     try {
-        // 3. Process Logic
+        // 4. Calculate Score
         const stressValue = emotionValue || emotionToValue(emotionLabel);
-        const score = calculateBurnoutScore({ sleep, study, stressValue, tasks, lastBreak });
+        const score = calculateBurnoutScore({
+            sleep: sleepHours,
+            study: studyHours,
+            stressValue,
+            tasks: pendingTasks,
+            lastBreak: daysSinceBreak
+        });
         const { level, message, colorClass } = getScoreLevel(score);
 
-        // 4. Get AI Advice
-        const aiAdvice = await getGroqAdvice({
-            sleep, study, emotion: emotionLabel, stressValue, tasks, lastBreak, score, scoreLevel: level
+        // 5. Get AI Advice (separate args)
+        const aiAdvice = await getGroqAdvice(emotionLabel, stressValue, score, {
+            sleepHours, studyHours, pendingTasks, daysSinceBreak
         });
 
-        // 5. Save to Firebase
+        // 6. Save to Firebase
+        const currentTime = new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit", minute: "2-digit", hour12: true
+        });
         const checkinData = {
             date: new Date().toLocaleDateString(),
-            sleep, study, emotion: emotionLabel, stressValue, tasks, lastBreak, score, aiAdvice
+            time: currentTime,
+            sleep: sleepHours,
+            study: studyHours,
+            emotion: emotionLabel,
+            stressValue,
+            tasks: pendingTasks,
+            lastBreak: daysSinceBreak,
+            score,
+            aiAdvice
         };
         await saveCheckin(checkinData);
 
-        // 6. Update UI
+        // 7. Parse AI response — split into advice message and schedule
+        const aiAdviceTextEl = document.getElementById("ai-advice-text");
+        const scheduleBoxEl = document.getElementById("schedule-box");
+        const scheduleListEl = document.getElementById("schedule-list");
+
+        // Split the response at "SCHEDULE:"
+        const scheduleSplit = aiAdvice.split("SCHEDULE:");
+        const adviceMessage = scheduleSplit[0].trim();
+        const scheduleRaw = scheduleSplit[1] ? scheduleSplit[1].trim() : null;
+
+        aiAdviceTextEl.textContent = adviceMessage;
+
+        // If schedule exists, render it
+        if (scheduleRaw && scheduleBoxEl) {
+            const lines = scheduleRaw.split("\n").filter(line => line.trim() !== "");
+            scheduleListEl.innerHTML = "";
+            lines.forEach(line => {
+                const parts = line.split(":").map(s => s.trim());
+                // parts[0] = hour, parts[1] = minutes + rest of text (because time has colon too)
+                // Better split: split at first " - " or just use the whole line
+                const li = document.createElement("li");
+                li.textContent = line.trim();
+                scheduleListEl.appendChild(li);
+            });
+            scheduleBoxEl.classList.remove("hidden");
+        }
+
+        // 8. Update Score UI
         document.getElementById('score-value').textContent = score;
         document.getElementById('score-level').textContent = level;
         document.getElementById('score-message').textContent = message;
-        document.getElementById('ai-advice-text').textContent = aiAdvice;
 
         // Apply score color classes
         const scoreCard = document.getElementById('score-card');
         scoreCard.className = 'card ' + colorClass;
-        
+
         const levelBadge = document.getElementById('score-level');
         levelBadge.className = colorClass;
 
-        // 7. UI State: Success
+        // 9. UI State: Success
         loadingSpinner.classList.add('hidden');
         resultSection.classList.remove('hidden');
         resultSection.scrollIntoView({ behavior: 'smooth' });
 
-        // 8. Refresh components
+        // 10. Refresh history
         renderHistory();
-        updateStreak();
 
     } catch (error) {
         console.error("Check-in failed:", error);
@@ -151,11 +188,11 @@ async function renderHistory() {
     historyList.innerHTML = '';
     history.forEach(entry => {
         const { level, colorClass } = getScoreLevel(entry.score);
-        
+
         const div = document.createElement('div');
         div.className = 'history-entry';
         div.innerHTML = `
-            <div class="history-date">${entry.date}</div>
+            <div class="history-date">${entry.date} <span class="history-time">${entry.time || ''}</span></div>
             <div class="history-emotion history-${entry.emotion.toLowerCase()}">${entry.emotion}</div>
             <div class="history-score ${colorClass}">${entry.score} / 100</div>
         `;
@@ -163,35 +200,3 @@ async function renderHistory() {
     });
 }
 
-// --- STREAK ---
-async function updateStreak() {
-    const history = await getHistory();
-    const streakCount = document.getElementById('streak-count');
-    
-    if (history.length === 0) {
-        streakCount.textContent = '0';
-        return;
-    }
-
-    let streak = 0;
-    const today = new Date().toLocaleDateString();
-    
-    // Simplistic streak logic for hackathon (consecutive entries in history)
-    // In a real app, you'd check day differences
-    for (let i = 0; i < history.length; i++) {
-        streak++;
-    }
-    
-    streakCount.textContent = streak;
-}
-
-// --- CLEAR HISTORY ---
-async function handleClearHistory() {
-    if (confirm("Are you sure you want to clear all your history?")) {
-        const success = await clearHistory();
-        if (success) {
-            renderHistory();
-            updateStreak();
-        }
-    }
-}

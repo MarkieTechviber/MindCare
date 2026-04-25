@@ -26,12 +26,6 @@
             <div class="tagline">Check in daily. Stay ahead of burnout.</div>
         </header>
 
-        <!-- Streak Counter -->
-        <section id="streak-section">
-            <span class="streak-icon">🔥</span>
-            <span>Current Streak: <span id="streak-count">0</span> days</span>
-        </section>
-
         <!-- Wellness Tip Section -->
         <section id="wellness-tip-container">
             <label>💡 Tip of the Day</label>
@@ -100,6 +94,12 @@
                 <label>🤖 AI Advice Just For You</label>
                 <p id="ai-advice-text"></p>
             </div>
+
+            <!-- Time-Based Recovery Schedule -->
+            <div id="schedule-box" class="card schedule-card hidden">
+                <p class="schedule-label">⏰ YOUR RECOVERY SCHEDULE</p>
+                <ul id="schedule-list" class="schedule-list"></ul>
+            </div>
         </section>
 
         <!-- Weekly History Section -->
@@ -108,7 +108,6 @@
             <div id="history-list">
                 <!-- Dynamically populated -->
             </div>
-            <button id="clear-history-btn">🗑 Clear History</button>
         </section>
 
         <footer>

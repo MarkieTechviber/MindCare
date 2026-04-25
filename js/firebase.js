@@ -3,19 +3,20 @@
  * Handles saving check-ins and retrieving history from Firestore.
  */
 
-// Firebase Configuration (Replace with actual values from .env)
+// Firebase Configuration — MindCare (mindcare-aa984)
 const firebaseConfig = {
-    apiKey: "your_firebase_api_key_here",
-    authDomain: "your_project_id.firebaseapp.com",
-    projectId: "your_project_id_here",
-    storageBucket: "your_project_id.appspot.com",
-    messagingSenderId: "your_messaging_sender_id_here",
-    appId: "your_firebase_app_id_here"
+    apiKey: "AIzaSyBOwaCtSLb095-MqkJGUPoAJP2rKWhArAA",
+    authDomain: "mindcare-aa984.firebaseapp.com",
+    projectId: "mindcare-aa984",
+    storageBucket: "mindcare-aa984.firebasestorage.app",
+    messagingSenderId: "608800807181",
+    appId: "1:608800807181:web:33c45569d4309e77427844",
+    measurementId: "G-3QSXQWT00L"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+// Initialize Firebase (use window.firebase for ES module compatibility)
+window.firebase.initializeApp(firebaseConfig);
+const db = window.firebase.firestore();
 
 /**
  * Saves a check-in record to Firestore.
@@ -26,7 +27,7 @@ export async function saveCheckin(data) {
     try {
         const docRef = await db.collection("checkins").add({
             ...data,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            timestamp: window.firebase.firestore.FieldValue.serverTimestamp()
         });
         console.log("Check-in saved successfully:", docRef.id);
         return docRef;
