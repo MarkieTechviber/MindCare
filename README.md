@@ -41,7 +41,7 @@
 ## 🚀 Setup Instructions
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/MarkieTechviber/BrainCare.git
+   git clone https://github.com/MarkieTechviber/MindCare.git
    ```
 2. **Configure Environment Variables**:
    - Copy `.env.example` to `.env`.
