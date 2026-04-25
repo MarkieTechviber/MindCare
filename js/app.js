@@ -4,55 +4,100 @@
  */
 
 import { emotionToValue, calculateBurnoutScore, getScoreLevel } from './score.js';
-import { getGroqAdvice } from './groq.js';
-import { saveCheckin, getHistory } from './firebase.js';
+import { getGroqAdvice, getWellnessTip } from './groq.js';
+import { saveCheckin, getHistory, deleteCheckin } from './firebase.js';
 
-// --- WELLNESS TIPS ---
-const WELLNESS_TIPS = [
-    "Take a 5-minute screen break every hour to rest your eyes. 👀",
-    "Stay hydrated! Your brain is 75% water. 💧",
-    "A 15-minute power nap can reset your focus. 😴",
-    "Try the 20-20-20 rule: Every 20 mins, look 20 feet away for 20 seconds. 🌿",
-    "Write down three things you accomplished today, no matter how small. ✨",
-    "Step outside for a few minutes of fresh air. It works wonders. 🚶‍♂️",
-    "Stretch your neck and shoulders; they carry most of your study stress. 🧘‍♀️",
-    "Deep breathing for 2 minutes can lower your cortisol levels. 🌬️",
-    "Don't compare your progress to others. Your journey is unique. 💛",
-    "It's okay to say no to extra tasks when you're feeling full. 🚫"
-];
+let selectedEmotion = null;
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    initWellnessTip();
     initEmotionSelector();
+    initStudySessions();
     renderHistory();
+
+    // Fetch daily AI wellness tip on load
+    getWellnessTip().then(tip => {
+        document.getElementById('wellness-tip-text').textContent = tip;
+        document.getElementById('wellness-tip-box').classList.remove('hidden');
+    });
 
     // Listen for form submission
     const checkinForm = document.getElementById('checkin-form');
     checkinForm.addEventListener('submit', handleCheckin);
 });
 
-function initWellnessTip() {
-    const tipContainer = document.querySelector('#wellness-tip p');
-    const randomTip = WELLNESS_TIPS[Math.floor(Math.random() * WELLNESS_TIPS.length)];
-    tipContainer.textContent = randomTip;
+function initStudySessions() {
+    document.getElementById("btn-add-session").addEventListener("click", () => {
+        const list = document.getElementById("session-list");
+        const index = list.querySelectorAll(".session-row").length;
+        
+        const row = document.createElement("div");
+        row.className = "session-row";
+        row.setAttribute("data-index", index);
+        row.innerHTML = `
+            <div class="session-fields">
+                <input type="text" class="session-subject" placeholder="Subject (e.g. Math)" />
+                <input type="number" class="session-hours" placeholder="Hrs" min="0" max="24" step="0.5" />
+                <select class="session-break">
+                    <option value="">Breaks?</option>
+                    <option value="yes">Yes</option>
+                    <option value="short">Short</option>
+                    <option value="no">No</option>
+                </select>
+                <button type="button" class="btn-remove-session">✕</button>
+            </div>
+        `;
+        list.appendChild(row);
+        
+        row.querySelector(".btn-remove-session").addEventListener("click", function() {
+            removeSession(this);
+        });
+    });
+
+    document.querySelectorAll(".btn-remove-session").forEach(btn => {
+        btn.addEventListener("click", function() {
+            removeSession(this);
+        });
+    });
+}
+
+function removeSession(btn) {
+    const row = btn.closest(".session-row");
+    const list = document.getElementById("session-list");
+    if (list.querySelectorAll(".session-row").length > 1) {
+        row.remove();
+    }
+}
+
+function collectStudySessions() {
+    const rows = document.querySelectorAll(".session-row");
+    const sessions = [];
+
+    rows.forEach(row => {
+        const subject = row.querySelector(".session-subject").value.trim();
+        const hours = parseFloat(row.querySelector(".session-hours").value);
+        const breakTaken = row.querySelector(".session-break").value;
+
+        if (subject && !isNaN(hours)) {
+            sessions.push({ subject, hours, breakTaken: breakTaken || "unknown" });
+        }
+    });
+
+    const notes = document.getElementById("study-notes").value.trim();
+    return { sessions, notes };
 }
 
 // --- EMOTION SELECTOR ---
 function initEmotionSelector() {
-    const buttons = document.querySelectorAll('.emotion-btn');
-    const valueInput = document.getElementById('selected-emotion-value');
-    const labelInput = document.getElementById('selected-emotion-label');
-
-    buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove selection from others
-            buttons.forEach(b => b.classList.remove('selected'));
-            // Select clicked
-            btn.classList.add('selected');
-            // Update hidden inputs
-            valueInput.value = btn.dataset.value;
-            labelInput.value = btn.dataset.label;
+    const emotionButtons = document.querySelectorAll(".emotion-btn");
+    emotionButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            emotionButtons.forEach(b => {
+                b.classList.remove("selected", "selected-energetic", "selected-normal", "selected-stressed", "selected-exhausted", "selected-overwhelmed");
+            });
+            const emotion = btn.getAttribute("data-emotion");
+            btn.classList.add("selected", `selected-${emotion.toLowerCase()}`);
+            selectedEmotion = emotion;
         });
     });
 }
@@ -62,12 +107,11 @@ async function handleCheckin(e) {
     e.preventDefault();
 
     // 1. Gather Inputs
-    const sleepHours = parseFloat(document.getElementById('sleep-hrs').value);
-    const studyHours = parseFloat(document.getElementById('study-hrs').value);
+    const sleepHours = parseFloat(document.getElementById('sleep-hours').value);
+    const studyHours = parseFloat(document.getElementById('study-hours').value);
     const pendingTasks = parseInt(document.getElementById('pending-tasks').value);
-    const daysSinceBreak = parseInt(document.getElementById('last-break').value);
-    const emotionLabel = document.getElementById('selected-emotion-label').value;
-    const emotionValue = parseInt(document.getElementById('selected-emotion-value').value);
+    const daysSinceBreak = parseInt(document.getElementById('days-break').value);
+    const emotionLabel = selectedEmotion;
 
     // 2. Validate
     if (!emotionLabel) {
@@ -76,9 +120,9 @@ async function handleCheckin(e) {
     }
 
     // 3. UI State: Loading
-    const loadingSpinner = document.getElementById('loading-spinner');
-    const resultSection = document.getElementById('result-section');
-    const submitBtn = document.getElementById('submit-btn');
+    const loadingSpinner = document.getElementById('loading-section');
+    const resultSection = document.getElementById('results-section');
+    const submitBtn = document.querySelector('.btn-submit');
 
     loadingSpinner.classList.remove('hidden');
     resultSection.classList.add('hidden');
@@ -86,20 +130,22 @@ async function handleCheckin(e) {
 
     try {
         // 4. Calculate Score
-        const stressValue = emotionValue || emotionToValue(emotionLabel);
+        const studyData = collectStudySessions();
+        const stressValue = emotionToValue(emotionLabel);
         const score = calculateBurnoutScore({
             sleep: sleepHours,
             study: studyHours,
             stressValue,
             tasks: pendingTasks,
-            lastBreak: daysSinceBreak
+            lastBreak: daysSinceBreak,
+            sessions: studyData.sessions
         });
         const { level, message, colorClass } = getScoreLevel(score);
 
         // 5. Get AI Advice (separate args)
         const aiAdvice = await getGroqAdvice(emotionLabel, stressValue, score, {
             sleepHours, studyHours, pendingTasks, daysSinceBreak
-        });
+        }, studyData);
 
         // 6. Save to Firebase
         const currentTime = new Date().toLocaleTimeString("en-US", {
@@ -123,11 +169,16 @@ async function handleCheckin(e) {
         const aiAdviceTextEl = document.getElementById("ai-advice-text");
         const scheduleBoxEl = document.getElementById("schedule-box");
         const scheduleListEl = document.getElementById("schedule-list");
+        const habitBoxEl = document.getElementById("habit-feedback-box");
+        const habitTextEl = document.getElementById("habit-feedback-text");
 
         // Split the response at "SCHEDULE:"
         const scheduleSplit = aiAdvice.split("SCHEDULE:");
         const adviceMessage = scheduleSplit[0].trim();
-        const scheduleRaw = scheduleSplit[1] ? scheduleSplit[1].trim() : null;
+        const scheduleRaw = scheduleSplit[1] ? scheduleSplit[1].split("HABIT_FEEDBACK:")[0].trim() : null;
+        const habitFeedback = aiAdvice.includes("HABIT_FEEDBACK:") 
+            ? aiAdvice.split("HABIT_FEEDBACK:")[1].trim() 
+            : null;
 
         aiAdviceTextEl.textContent = adviceMessage;
 
@@ -136,27 +187,35 @@ async function handleCheckin(e) {
             const lines = scheduleRaw.split("\n").filter(line => line.trim() !== "");
             scheduleListEl.innerHTML = "";
             lines.forEach(line => {
-                const parts = line.split(":").map(s => s.trim());
-                // parts[0] = hour, parts[1] = minutes + rest of text (because time has colon too)
-                // Better split: split at first " - " or just use the whole line
                 const li = document.createElement("li");
                 li.textContent = line.trim();
                 scheduleListEl.appendChild(li);
             });
             scheduleBoxEl.classList.remove("hidden");
+        } else {
+            if (scheduleBoxEl) scheduleBoxEl.classList.add("hidden");
+        }
+
+        // If habit feedback exists, render it
+        if (habitFeedback && habitBoxEl) {
+            habitTextEl.innerHTML = habitFeedback
+                .split("\n")
+                .filter(line => line.trim())
+                .map(line => `<p>${line}</p>`)
+                .join("");
+            habitBoxEl.classList.remove("hidden");
+        } else {
+            if (habitBoxEl) habitBoxEl.classList.add("hidden");
         }
 
         // 8. Update Score UI
-        document.getElementById('score-value').textContent = score;
-        document.getElementById('score-level').textContent = level;
+        document.getElementById('score-number').textContent = score;
+        document.getElementById('score-label').textContent = `${level} BURNOUT RISK`;
         document.getElementById('score-message').textContent = message;
 
         // Apply score color classes
-        const scoreCard = document.getElementById('score-card');
-        scoreCard.className = 'card ' + colorClass;
-
-        const levelBadge = document.getElementById('score-level');
-        levelBadge.className = colorClass;
+        const scoreCard = document.getElementById('score-result-card');
+        scoreCard.className = `card result-card result-${level.toLowerCase()} ${colorClass}`;
 
         // 9. UI State: Success
         loadingSpinner.classList.add('hidden');
@@ -190,13 +249,41 @@ async function renderHistory() {
         const { level, colorClass } = getScoreLevel(entry.score);
 
         const div = document.createElement('div');
-        div.className = 'history-entry';
+        div.className = 'history-item';
+        
+        // Extract a preview from the AI advice (first sentence)
+        const advicePreview = entry.aiAdvice ? entry.aiAdvice.split('.')[0] + '.' : '';
+
         div.innerHTML = `
-            <div class="history-date">${entry.date} <span class="history-time">${entry.time || ''}</span></div>
-            <div class="history-emotion history-${entry.emotion.toLowerCase()}">${entry.emotion}</div>
-            <div class="history-score ${colorClass}">${entry.score} / 100</div>
+            <div>
+                <div class="history-date">${entry.date} <span class="history-time">${entry.time || ''}</span></div>
+                <div class="history-emotion-tag tag-${entry.emotion.toLowerCase()}">${entry.emotion}</div>
+                <div class="history-score ${colorClass}">${entry.score} / 100</div>
+                <button class="delete-history-btn" data-id="${entry.id}" title="Delete Check-in">✕</button>
+            </div>
+            ${advicePreview ? `<div class="history-advice-preview">"${advicePreview}"</div>` : ''}
         `;
         historyList.appendChild(div);
+    });
+
+    // Add event listeners for delete buttons
+    const deleteBtns = historyList.querySelectorAll('.delete-history-btn');
+    deleteBtns.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            if (confirm('Are you sure you want to delete this check-in?')) {
+                e.target.disabled = true;
+                e.target.innerHTML = '<div class="spinner-small"></div>';
+                const success = await deleteCheckin(id);
+                if (success) {
+                    renderHistory(); // Refresh the list
+                } else {
+                    alert('Failed to delete check-in. Please try again.');
+                    e.target.disabled = false;
+                    e.target.textContent = '✕';
+                }
+            }
+        });
     });
 }
 

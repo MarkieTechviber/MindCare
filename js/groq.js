@@ -1,10 +1,10 @@
 /**
  * NightR41d.exe — Groq AI Integration
- * Generates personalized burnout prevention advice + recovery schedule.
+ * Generates personalized burnout prevention advice + recovery schedule + habit feedback.
  */
 
 // Using Groq API for personalized advice
-const GROQ_API_KEY = "YOUR_API_KEY_HERE";
+const GROQ_API_KEY = "put your kawai ai api here";
 
 /**
  * Builds a prompt for Groq AI based on student data.
@@ -12,46 +12,81 @@ const GROQ_API_KEY = "YOUR_API_KEY_HERE";
  * @param {number} stressValue - Numeric stress value (1-10)
  * @param {number} score - Burnout score (0-100)
  * @param {Object} inputs - { sleepHours, studyHours, pendingTasks, daysSinceBreak }
+ * @param {Object} studyData - { sessions: [], notes: "" }
  * @returns {string} - The complete prompt string
  */
-export function buildPrompt(emotionLabel, stressValue, score, inputs) {
+export function buildPrompt(emotionLabel, stressValue, score, inputs, studyData = null) {
     const now = new Date();
-    const currentTime = now.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
+    const minutes = now.getMinutes();
+    const roundedMinutes = minutes < 30 ? 30 : 0;
+    const roundedHours = minutes < 30 ? now.getHours() : now.getHours() + 1;
+    const startTime = new Date(now);
+    startTime.setHours(roundedHours, roundedMinutes, 0, 0);
+
+    const formatTime = (date) => date.toLocaleTimeString("en-US", {
+        hour: "2-digit", minute: "2-digit", hour12: true
     });
 
-    return `You are a burnout prevention advisor for students.
-A student just completed their burnout check-in at ${currentTime}.
-They are feeling "${emotionLabel}" (stress level ${stressValue}/10) with a burnout score of ${score}/100.
+    const currentTime = formatTime(now);
+    const scheduleStart = formatTime(startTime);
 
-Their habits:
-- Sleep: ${inputs.sleepHours} hours
-- Study: ${inputs.studyHours} hours  
-- Pending tasks: ${inputs.pendingTasks}
-- Days since last break: ${inputs.daysSinceBreak}
+    const scheduleRule = score >= 67
+        ? `HIGH burnout (${score}/100). First 2 hours must be full rest — no studying. Be firm but warm.`
+        : score >= 34
+            ? `MODERATE burnout (${score}/100). One solid rest block then ease back into light study.`
+            : `LOW burnout (${score}/100). Short breaks between focused sessions to maintain energy.`;
 
-Based on their burnout score and the current time (${currentTime}), generate TWO things:
+    // Build study session summary if provided
+    let studyContext = "";
+    let habitSection = "";
 
-1. A short 2-sentence caring message to the student (address them as "you", match tone to emotion).
+    if (studyData && studyData.sessions && studyData.sessions.length > 0) {
+        const sessionLines = studyData.sessions.map(s =>
+            `- ${s.subject}: ${s.hours} hours, breaks: ${s.breakTaken}`
+        ).join("\n");
 
-2. A time-based recovery schedule starting from NOW. Format it EXACTLY like this with no extra text:
+        studyContext = `
+What they actually studied today:
+${sessionLines}
+${studyData.notes ? `Student notes: "${studyData.notes}"` : ""}
+`;
+
+        habitSection = `
+PART 3 — STUDY HABIT ANALYSIS:
+Based on their study sessions above, give honest and specific feedback on their study habits (4-5 sentences).
+- Were their study methods healthy or harmful?
+- Did their break behavior contribute to their burnout score?
+- What specific habit should they change starting tomorrow?
+- Be direct but encouraging — like a mentor, not a judge
+- Reference their actual subjects and hours, not generic advice
+
+Format exactly as:
+HABIT_FEEDBACK:
+[your habit analysis here as plain sentences, no bullet points]
+`;
+    }
+
+    return `You are a warm and emotionally intelligent student wellness advisor who has personally experienced burnout. You understand that the time of day matters just as much as the numbers when giving advice to a tired student.
+Student checked in at ${currentTime} feeling "${emotionLabel}". Burnout score: ${score}/100.
+Their situation: Sleep last night was ${inputs.sleepHours} hours. Study time today was ${inputs.studyHours} hours. Pending tasks: ${inputs.pendingTasks}. Days since last full break: ${inputs.daysSinceBreak}.
+${studyContext}
+${scheduleRule}
+TIME-AWARE BEHAVIOR RULES: You must detect what period of day it is based on the check-in time and adjust your entire tone, advice, and schedule accordingly. If the check-in time is between 9:00 PM and 5:00 AM, this is considered NIGHT MODE. In night mode, do not encourage the student to study more or be productive. Instead, gently wind them down. Acknowledge that their brain needs rest, not more input. Your schedule must include sleep preparation steps, relaxation, and a firm but caring push toward sleeping at a reasonable time. Avoid scheduling any study or task review after 11:00 PM. If the check-in time is between 5:00 AM and 12:00 PM, this is MORNING MODE. In morning mode, be energizing but grounded. Help them plan a focused and healthy day ahead based on their data. Encourage momentum but remind them about breaks. If the check-in time is between 12:00 PM and 9:00 PM, this is DAYTIME MODE. In daytime mode, balance productivity with recovery. Use their burnout score to decide how much to push or pull back. High burnout means rest first, low burnout means structured study with breaks.
+
+PART 1 — Personal message (4 to 6 sentences): Validate their emotion using their actual numbers. Be honest about what their score means for their body and mind right now. Give them one real mindset shift they need to hear. Sound like a caring friend, not a robot. If it is night time, acknowledge that staying up late is already part of the problem and say it with warmth not judgment.
+
+PART 2 — Recovery or productivity schedule starting at ${scheduleStart}, every 30 minutes, exactly 6 slots. Each action must be a full descriptive sentence. Every slot must be different, never repeat. No single-word actions. If it is night time, the schedule must guide them toward sleep, not keep them awake. If it is morning or daytime, the schedule should reflect a healthy and realistic plan based on their score and data.
+
+Format exactly as:
 SCHEDULE:
-[time]: [short action]
-[time]: [short action]
-[time]: [short action]
-[time]: [short action]
-[time]: [short action]
-
-Rules for the schedule:
-- Start the first slot 15-30 minutes from ${currentTime}
-- If score is HIGH (67-100): prioritize complete rest, no studying, sleep early
-- If score is MODERATE (34-66): mix rest and light study breaks
-- If score is LOW (0-33): light schedule, encourage steady progress
-- Each action should be short and human (e.g. "step away from the screen", "take a short walk", "drink water and breathe")
-- End the schedule with sleep or wind-down if it's nighttime
-- Keep the whole response under 150 words`;
+[time]: [full sentence action]
+[time]: [full sentence action]
+[time]: [full sentence action]
+[time]: [full sentence action]
+[time]: [full sentence action]
+[time]: [full sentence action]
+${habitSection}
+Total response under 400 words.`;
 }
 
 /**
@@ -60,10 +95,11 @@ Rules for the schedule:
  * @param {number} stressValue
  * @param {number} score
  * @param {Object} inputs
+ * @param {Object} studyData
  * @returns {Promise<string>} - Raw AI response text
  */
-export async function getGroqAdvice(emotionLabel, stressValue, score, inputs) {
-    const prompt = buildPrompt(emotionLabel, stressValue, score, inputs);
+export async function getGroqAdvice(emotionLabel, stressValue, score, inputs, studyData = null) {
+    const prompt = buildPrompt(emotionLabel, stressValue, score, inputs, studyData);
 
     try {
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -73,9 +109,9 @@ export async function getGroqAdvice(emotionLabel, stressValue, score, inputs) {
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama3-8b-8192",
+                model: "llama-3.3-70b-versatile",
                 messages: [{ role: "user", content: prompt }],
-                max_tokens: 300,
+                max_tokens: 1000,
                 temperature: 0.7
             })
         });
@@ -85,6 +121,35 @@ export async function getGroqAdvice(emotionLabel, stressValue, score, inputs) {
     } catch (error) {
         console.error("Error fetching Groq advice:", error);
         return "You're doing your best. Remember to rest and be kind to yourself. 💙\n\nSCHEDULE:\nNow: Take a deep breath\nIn 30 mins: Drink water and stretch\nTonight: Sleep early";
+    }
+}
+
+/**
+ * Fetches a random wellness or academic tip from Groq AI.
+ * @returns {Promise<string>} - The dynamic wellness tip.
+ */
+export async function getWellnessTip() {
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [{
+                    role: "user",
+                    content: `Generate one single short and genuinely helpful reminder or quote for a student about mental wellness or academic improvement. It must be original, warm, and encouraging. Maximum 2 sentences. No introductions, no labels, no quotation marks, just the reminder itself.`
+                }],
+                max_tokens: 80,
+                temperature: 0.9
+            })
+        });
+        const result = await response.json();
+        return result.choices[0].message.content.trim();
+    } catch (error) {
+        return "Your consistency matters more than your speed. Keep going, one step at a time. 💛";
     }
 }
 

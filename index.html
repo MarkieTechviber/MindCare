@@ -1,121 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NightR41d — Student Burnout Prevention System</title>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
-    
-    <!-- CSS -->
+    <title>NightR41d.exe - Student Burnout Prevention</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
-    
-    <!-- Firebase SDK (Compat Version) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
+
 <body>
+
     <div class="container">
         <header>
-            <h1>NightR41d</h1>
-            <p>Student Burnout Prevention System</p>
-            <div class="tagline">Check in daily. Stay ahead of burnout.</div>
+            <h1>NightR41d.exe</h1>
+            <h2>Daily Burnout Check-In</h2>
         </header>
 
-        <!-- Wellness Tip Section -->
-        <section id="wellness-tip-container">
-            <label>💡 Tip of the Day</label>
-            <div id="wellness-tip" class="card">
-                <p>Loading your daily wellness tip...</p>
-            </div>
-        </section>
-
-        <!-- Daily Check-In Form -->
-        <section>
-            <h2>Daily Check-In</h2>
-            <form id="checkin-form" class="card">
-                <div class="input-group">
-                    <label for="sleep-hrs">🌙 Hours of Sleep</label>
-                    <input type="number" id="sleep-hrs" min="0" max="24" placeholder="0" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="study-hrs">📚 Hours of Study</label>
-                    <input type="number" id="study-hrs" min="0" max="24" placeholder="0" required>
-                </div>
-
-                <div id="emotion-selector">
-                    <label>💭 How are you feeling right now?</label>
-                    <div class="emotion-buttons">
-                        <button type="button" class="emotion-btn" data-value="1" data-label="Energetic">🟢 Energetic</button>
-                        <button type="button" class="emotion-btn" data-value="3" data-label="Normal">🟡 Normal</button>
-                        <button type="button" class="emotion-btn" data-value="6" data-label="Stressed">🟠 Stressed</button>
-                        <button type="button" class="emotion-btn" data-value="8" data-label="Exhausted">🔴 Exhausted</button>
-                        <button type="button" class="emotion-btn" data-value="10" data-label="Overwhelmed">🔥 Overwhelmed</button>
-                    </div>
-                    <input type="hidden" id="selected-emotion-value">
-                    <input type="hidden" id="selected-emotion-label">
-                </div>
-
-                <div class="input-group">
-                    <label for="pending-tasks">📋 Pending Tasks</label>
-                    <input type="number" id="pending-tasks" min="0" placeholder="0" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="last-break">☕ Days Since Last Break</label>
-                    <input type="number" id="last-break" min="0" placeholder="0" required>
-                </div>
-
-                <button type="submit" id="submit-btn">Submit Check-In →</button>
-            </form>
-        </section>
-
-        <!-- Loading Spinner -->
-        <div id="loading-spinner" class="hidden">
-            <div class="spinner"></div>
-            <p>Generating your personalized advice...</p>
+        <!-- Daily AI Wellness Reminder -->
+        <div id="wellness-tip-box" class="card wellness-card hidden">
+            <p class="wellness-label">💡 DAILY WELLNESS REMINDER</p>
+            <p id="wellness-tip-text"></p>
         </div>
 
-        <!-- Result Section -->
-        <section id="result-section" class="hidden">
-            <h2>Your Result</h2>
-            <div id="score-card" class="card">
-                <span id="score-value">0</span>
-                <div id="score-level">LEVEL</div>
-                <p id="score-message"></p>
+        <main>
+            <!-- ===== STUDY SESSION LOGGER ===== -->
+            <div class="card" id="study-logger">
+                <h2 class="section-title">📋 What Did You Study Today?</h2>
+                <p class="section-subtitle">Log your study sessions so the AI can evaluate your study habits — not just
+                    how you feel.</p>
+
+                <!-- Dynamic session rows -->
+                <div id="session-list">
+                    <!-- Session Row Template (starts with one) -->
+                    <div class="session-row" data-index="0">
+                        <div class="session-fields">
+                            <input type="text" class="session-subject" placeholder="Subject (e.g. Math, History)" />
+                            <input type="number" class="session-hours" placeholder="Hours studied" min="0" max="24"
+                                step="0.5" />
+                            <select class="session-break">
+                                <option value="">Did you take breaks?</option>
+                                <option value="yes">Yes — took proper breaks</option>
+                                <option value="short">Short breaks only</option>
+                                <option value="no">No breaks at all</option>
+                            </select>
+                            <button class="btn-remove-session">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add more sessions -->
+                <button class="btn-add-session" id="btn-add-session">+ Add Another Subject</button>
+
+                <!-- Optional notes -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="study-notes">Additional Notes <span class="optional-tag">(optional)</span></label>
+                    <textarea id="study-notes"
+                        placeholder="e.g. Couldn't focus after the first hour, kept checking my phone, forced through chapters without understanding..."
+                        rows="3"></textarea>
+                </div>
             </div>
 
-            <div id="ai-advice-card" class="card">
-                <label>🤖 AI Advice Just For You</label>
-                <p id="ai-advice-text"></p>
-            </div>
+            <section class="card">
+                <form id="checkin-form">
 
-            <!-- Time-Based Recovery Schedule -->
-            <div id="schedule-box" class="card schedule-card hidden">
-                <p class="schedule-label">⏰ YOUR RECOVERY SCHEDULE</p>
-                <ul id="schedule-list" class="schedule-list"></ul>
-            </div>
-        </section>
+                    <div class="form-group">
+                        <label for="sleep-hours">How many hours did you sleep last night?</label>
+                        <input type="number" id="sleep-hours" min="0" max="24" step="0.5" required
+                            placeholder="e.g. 7.5">
+                    </div>
 
-        <!-- Weekly History Section -->
-        <section id="history-section">
-            <h2>📅 Your Last 7 Check-Ins</h2>
-            <div id="history-list">
-                <!-- Dynamically populated -->
-            </div>
-        </section>
+                    <div class="form-group">
+                        <label for="study-hours">How many hours did you study today?</label>
+                        <input type="number" id="study-hours" min="0" max="24" step="0.5" required placeholder="e.g. 4">
+                    </div>
 
-        <footer>
-            NightR41d.exe | BSIT Sophomore | ACLC ICT Week 2026
-        </footer>
+                    <!-- Emotion Selector -->
+                    <div class="form-group">
+                        <label>How are you feeling right now?</label>
+                        <div class="emotion-selector" id="emotion-selector">
+                            <button type="button" class="emotion-btn" data-emotion="Energetic">
+                                <span class="emoji">🟢</span>
+                                <span class="label">Energetic</span>
+                            </button>
+                            <button type="button" class="emotion-btn" data-emotion="Normal">
+                                <span class="emoji">🟡</span>
+                                <span class="label">Normal</span>
+                            </button>
+                            <button type="button" class="emotion-btn" data-emotion="Stressed">
+                                <span class="emoji">🟠</span>
+                                <span class="label">Stressed</span>
+                            </button>
+                            <button type="button" class="emotion-btn" data-emotion="Exhausted">
+                                <span class="emoji">🔴</span>
+                                <span class="label">Exhausted</span>
+                            </button>
+                            <button type="button" class="emotion-btn" data-emotion="Overwhelmed">
+                                <span class="emoji">🔥</span>
+                                <span class="label">Overwhelmed</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pending-tasks">Number of pending tasks/assignments:</label>
+                        <input type="number" id="pending-tasks" min="0" required placeholder="e.g. 5">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="days-break">Days since you last took a full break:</label>
+                        <input type="number" id="days-break" min="0" required placeholder="e.g. 3">
+                    </div>
+
+                    <button type="submit" class="btn-submit">Calculate Burnout Risk</button>
+
+                </form>
+            </section>
+
+            <!-- Loading Spinner -->
+            <section id="loading-section" class="hidden">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Analyzing your responses with AI...</div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="hidden">
+                <!-- Score Result Card -->
+                <div id="score-result-card" class="card result-card">
+                    <div id="score-number" class="score-number">--</div>
+                    <div id="score-label" class="score-label">--</div>
+                    <div id="score-message" class="score-message">--</div>
+                </div>
+
+                <!-- AI Advice Card -->
+                <div class="advice-card">
+                    <div class="advice-label">AI Advisor Insight</div>
+                    <div id="ai-advice-text" class="advice-text">--</div>
+                </div>
+
+                <!-- Time-Based Recovery Schedule -->
+                <div id="schedule-box" class="card schedule-card hidden">
+                    <p class="schedule-label">⏰ YOUR RECOVERY SCHEDULE</p>
+                    <ul id="schedule-list" class="schedule-list"></ul>
+                </div>
+
+                <!-- Study Habit Feedback Card -->
+                <div id="habit-feedback-box" class="card habit-card hidden">
+                    <p class="habit-label">📚 STUDY HABIT ANALYSIS</p>
+                    <div id="habit-feedback-text"></div>
+                </div>
+            </section>
+
+            <!-- Weekly History Section -->
+            <section class="card history-section">
+                <h3>Recent Check-Ins</h3>
+                <div id="history-list">
+                    <!-- History items will be injected here by JS -->
+                </div>
+            </section>
+
+        </main>
     </div>
 
-    <!-- JS Logic -->
+    <!-- Firebase SDK (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <!-- App Scripts -->
     <script type="module" src="js/app.js"></script>
+
 </body>
+
 </html>

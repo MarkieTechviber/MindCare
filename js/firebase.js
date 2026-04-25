@@ -18,14 +18,44 @@ const firebaseConfig = {
 window.firebase.initializeApp(firebaseConfig);
 const db = window.firebase.firestore();
 
+// --- DEVICE-BASED USER ISOLATION ---
+// Each device gets a unique ID stored in localStorage.
+// All data is scoped under users/{deviceId}/checkins so devices are isolated.
+function getDeviceId() {
+    let deviceId = localStorage.getItem("nightr41d_device_id");
+    if (!deviceId) {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            deviceId = crypto.randomUUID();
+        } else {
+            // Fallback for older browsers or environments without randomUUID
+            deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        localStorage.setItem("nightr41d_device_id", deviceId);
+        console.log("New device ID generated:", deviceId);
+    }
+    return deviceId;
+}
+
 /**
- * Saves a check-in record to Firestore.
+ * Returns the Firestore sub-collection path for the current device.
+ * @returns {firebase.firestore.CollectionReference}
+ */
+function getUserCheckins() {
+    const deviceId = getDeviceId();
+    return db.collection("users").doc(deviceId).collection("checkins");
+}
+
+/**
+ * Saves a check-in record to Firestore (scoped to this device).
  * @param {Object} data - { date, sleep, study, emotion, stressValue, tasks, lastBreak, score, aiAdvice }
  * @returns {Promise<DocumentReference>}
  */
 export async function saveCheckin(data) {
     try {
-        const docRef = await db.collection("checkins").add({
+        const docRef = await getUserCheckins().add({
             ...data,
             timestamp: window.firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -38,12 +68,12 @@ export async function saveCheckin(data) {
 }
 
 /**
- * Retrieves the last 7 check-ins from Firestore.
+ * Retrieves the last 7 check-ins from Firestore (scoped to this device).
  * @returns {Promise<Array>} - Array of check-in objects
  */
 export async function getHistory() {
     try {
-        const snapshot = await db.collection("checkins")
+        const snapshot = await getUserCheckins()
             .orderBy("timestamp", "desc")
             .limit(7)
             .get();
@@ -59,18 +89,34 @@ export async function getHistory() {
 }
 
 /**
- * Clears all history from the checkins collection.
+ * Clears all history for this device from the checkins collection.
  * @returns {Promise<boolean>}
  */
 export async function clearHistory() {
     try {
-        const snapshot = await db.collection("checkins").get();
+        const snapshot = await getUserCheckins().get();
         const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
         await Promise.all(deletePromises);
         console.log("History cleared successfully.");
         return true;
     } catch (error) {
         console.error("Error clearing history:", error);
+        return false;
+    }
+}
+
+/**
+ * Deletes a single check-in record from Firestore (scoped to this device).
+ * @param {string} id - The document ID of the check-in
+ * @returns {Promise<boolean>}
+ */
+export async function deleteCheckin(id) {
+    try {
+        await getUserCheckins().doc(id).delete();
+        console.log(`Check-in ${id} deleted successfully.`);
+        return true;
+    } catch (error) {
+        console.error("Error deleting check-in:", error);
         return false;
     }
 }

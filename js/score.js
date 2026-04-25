@@ -29,7 +29,7 @@ export function emotionToValue(emotionLabel) {
  * @returns {number} - Rounded score between 0 and 100
  */
 export function calculateBurnoutScore(inputs) {
-    const { sleep, study, stressValue, tasks, lastBreak } = inputs;
+    const { sleep, study, stressValue, tasks, lastBreak, sessions } = inputs;
 
     // 1. Sleep Score (Max 25 points)
     // Ideal: 7-9 hours. 
@@ -61,7 +61,21 @@ export function calculateBurnoutScore(inputs) {
     let breakScore = (lastBreak / 7) * 10;
     breakScore = Math.min(breakScore, 10);
 
-    const total = sleepScore + studyScore + stressScore + tasksScore + breakScore;
+    // 6. Session Habit Penalty (Max 15 points)
+    // Penalize if they studied without breaks
+    let sessionPenalty = 0;
+    if (sessions && sessions.length > 0) {
+        sessions.forEach(session => {
+            if (session.breakTaken === 'no') {
+                sessionPenalty += (session.hours * 2); // 2 penalty points per hour with no breaks
+            } else if (session.breakTaken === 'short') {
+                sessionPenalty += (session.hours * 1); // 1 penalty point per hour with short breaks
+            }
+        });
+    }
+    sessionPenalty = Math.min(sessionPenalty, 15);
+
+    const total = sleepScore + studyScore + stressScore + tasksScore + breakScore + sessionPenalty;
     return Math.min(Math.round(total), 100);
 }
 
