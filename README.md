@@ -19,6 +19,7 @@
 - ☁️ **Cloud Sync** — Check-in history is saved to and retrieved from Firebase Firestore, scoped per device using a unique device ID.
 - 📂 **History Popup** — Clicking any history entry opens a detail popup showing all saved metrics including productivity score and AI insight.
 - 👤 **User Profile** — Users can set and update their display name, stored in `localStorage`, shown in the top bar and profile chip.
+- 🔍 **Search Bar** — UI search element present for future expansion (demo placeholder active).
 - 💡 **Wellness Tip of the Day** — A dynamic AI-generated daily reminder fetched from Groq on page load.
 - 🌱 **"Just Started Today" Quick-Select** — A convenience button that sets "days since last break" to 0 so new students aren't penalized unfairly.
 - ⏱️ **Hours/Minutes Unit Toggle** — Each study session entry supports toggling between hours and minutes for flexible time input.
@@ -363,6 +364,15 @@ Altogether, this system is designed not just to measure burnout, but to predict,
 - **Jimmie Em Ilaguno** — UI Developer (CSS Design, Emotion Selector, Productivity Circle, Spinner)
 - **Kielah Manlapid Pepito** — Documentation Specialist (README, Scripting, Demo)
 - **Jhon Daryl Sawayan** — Dev Tester (Error Detection, Unnecessary Feature Filtering, Brainstormer)
+
+---
+
+## 🧰 Tools Used to Build This Application
+| Tool | Purpose |
+|---|---|
+| **Claude Code** | Agentic AI coding assistant — used for writing, refactoring, and debugging JS logic, Firebase integration, and Groq prompt engineering |
+| **Kimi** | AI assistant — used for research, ideation, and cross-referencing implementation approaches |
+| **ChatGPT** | AI assistant — used for brainstorming features, writing documentation drafts, and troubleshooting logic |
 
 ---
 
