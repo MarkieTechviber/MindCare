@@ -4,7 +4,7 @@
  */
 
 // Using Groq API for personalized advice (Remember to keep your API key secret!)
-const GROQ_API_KEY = "i have my api on it but git is strict"; // PASTE_YOUR_KEY_HERE
+const GROQ_API_KEY = "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"; // PASTE_YOUR_KEY_HERE
 
 /**
  * Builds a prompt for Groq AI based on student data.
@@ -17,11 +17,36 @@ const GROQ_API_KEY = "i have my api on it but git is strict"; // PASTE_YOUR_KEY_
  */
 export function buildPrompt(emotionLabel, stressValue, score, inputs, studyData = null) {
     const now = new Date();
+    const hour = now.getHours();
+    
+    // 5-Zone Time Classifier
+    const isLateNight  = hour >= 23 || hour < 5;   // 11PM–5AM → SLEEP NOW
+    const isEarlyNight = hour >= 21 && hour < 23;  // 9PM–11PM → wind down
+    const isEvening    = hour >= 18 && hour < 21;  // 6PM–9PM  → light work
+    const isPeakStudy  = hour >= 11 && hour < 18;  // 11AM–6PM → optimal study
+    const isMorning    = hour >= 5  && hour < 11;  // 5AM–11AM → gentle start
+
+    // Dynamic Schedule Parameters
+    let scheduleSlots, scheduleInterval;
+    if (isLateNight)       { scheduleSlots = 3; scheduleInterval = 15; }
+    else if (isEarlyNight) { scheduleSlots = 4; scheduleInterval = 20; }
+    else if (isEvening)    { scheduleSlots = 5; scheduleInterval = 30; }
+    else if (isPeakStudy)  { scheduleSlots = 6; scheduleInterval = 45; }
+    else                   { scheduleSlots = 5; scheduleInterval = 30; } // morning
+
+    // Calculate Schedule Start (More immediate for Late Night)
     const minutes = now.getMinutes();
-    const roundedMinutes = minutes < 30 ? 30 : 0;
-    const roundedHours = minutes < 30 ? now.getHours() : now.getHours() + 1;
-    const startTime = new Date(now);
-    startTime.setHours(roundedHours, roundedMinutes, 0, 0);
+    let startTime = new Date(now);
+    if (isLateNight) {
+        // Round to next 5 minutes for urgency
+        const roundedMins = Math.ceil(minutes / 5) * 5;
+        startTime.setMinutes(roundedMins, 0, 0);
+    } else {
+        // Round to next 30 for daytime structure
+        const roundedMins = minutes < 30 ? 30 : 0;
+        const roundedHours = minutes < 30 ? hour : hour + 1;
+        startTime.setHours(roundedHours, roundedMins, 0, 0);
+    }
 
     const formatTime = (date) => date.toLocaleTimeString("en-US", {
         hour: "2-digit", minute: "2-digit", hour12: true
@@ -29,6 +54,52 @@ export function buildPrompt(emotionLabel, stressValue, score, inputs, studyData 
 
     const currentTime = formatTime(now);
     const scheduleStart = formatTime(startTime);
+
+    // Zone-Specific AI Instructions
+    let scheduleModeInstruction;
+    if (isLateNight) {
+        scheduleModeInstruction = `
+HARD OVERRIDE — LATE NIGHT (${currentTime}):
+Research shows 5AM is the absolute cognitive nadir (rated 20/100 by students).
+Screen use within 1 hour of bed raises insomnia risk by 59% (Frontiers 2025).
+The student MUST be asleep within 30–45 minutes. No exceptions.
+Give exactly 3 steps at 15-minute intervals:
+- Step 1: Put down all screens, dim lights immediately.
+- Step 2: Physical wind-down only (wash face, stretch, get into bed).
+- Step 3: Eyes closed. Sleep. The schedule ends here.
+DO NOT suggest journaling, tea, music, or any activity that extends wakefulness.
+Tone: warm, firm, like a friend who genuinely cares. Not preachy.`;
+    } else if (isEarlyNight) {
+        scheduleModeInstruction = `
+EARLY NIGHT MODE (${currentTime}):
+Melatonin is rising. The student should stop all new learning now.
+Research: screens must stop 60 minutes before target sleep time.
+Give exactly 4 steps at 20-minute intervals.
+Allow light review only (no new material). End with screen-off and bed prep.
+Suggest a realistic sleep time based on their sleep data.`;
+    } else if (isEvening) {
+        scheduleModeInstruction = `
+EVENING MODE (${currentTime}):
+Still within productive hours but winding down.
+Research: late afternoon/early evening is optimal for review and integration.
+Give exactly 5 steps at 30-minute intervals.
+Light study or review is fine. Remind them to stop screens by 10PM.
+Use burnout score — high burnout = rest now, low = one more light session.`;
+    } else if (isPeakStudy) {
+        scheduleModeInstruction = `
+PEAK STUDY MODE (${currentTime}):
+Research: 11AM–6PM is the optimal cognitive window for college students.
+Give exactly 6 steps at 45-minute intervals with built-in break slots.
+Encourage deep, focused study aligned with their burnout score.
+High burnout = recovery first then study. Low burnout = full focus blocks.`;
+    } else {
+        scheduleModeInstruction = `
+MORNING MODE (${currentTime}):
+Brain is refreshed but may have morning grogginess for the first hour.
+Research: students perform best after 11AM, so early morning = light warm-up.
+Give exactly 5 steps at 30-minute intervals.
+Start with light review, build toward focused work as the morning progresses.`;
+    }
 
     const scheduleRule = score >= 67
         ? `HIGH burnout (${score}/100). First 2 hours must be full rest — no studying. Be firm but warm.`
@@ -66,28 +137,30 @@ HABIT_FEEDBACK:
 `;
     }
 
+    // Build dynamic slot template
+    const slotLines = Array.from(
+        { length: scheduleSlots },
+        () => `[time]: [full sentence action]`
+    ).join("\n");
+
     return `You are a warm and emotionally intelligent student wellness advisor who has personally experienced burnout. You understand that the time of day matters just as much as the numbers when giving advice to a tired student.
 Student checked in at ${currentTime} feeling "${emotionLabel}". Burnout score: ${score}/100.
 Their situation: Sleep last night was ${inputs.sleepHours} hours. Study time today was ${inputs.studyHours} hours. Pending tasks: ${inputs.pendingTasks}. Days since last full break: ${inputs.daysSinceBreak}.
 ${studyContext}
 ${scheduleRule}
-TIME-AWARE BEHAVIOR RULES: You must detect what period of day it is based on the check-in time and adjust your entire tone, advice, and schedule accordingly. If the check-in time is between 9:00 PM and 5:00 AM, this is considered NIGHT MODE. In night mode, do not encourage the student to study more or be productive. Instead, gently wind them down. Acknowledge that their brain needs rest, not more input. Your schedule must include sleep preparation steps, relaxation, and a firm but caring push toward sleeping at a reasonable time. Avoid scheduling any study or task review after 11:00 PM. If the check-in time is between 5:00 AM and 12:00 PM, this is MORNING MODE. In morning mode, be energizing but grounded. Help them plan a focused and healthy day ahead based on their data. Encourage momentum but remind them about breaks. If the check-in time is between 12:00 PM and 9:00 PM, this is DAYTIME MODE. In daytime mode, balance productivity with recovery. Use their burnout score to decide how much to push or pull back. High burnout means rest first, low burnout means structured study with breaks.
 
-PART 1 — Personal message (4 to 6 sentences): Validate their emotion using their actual numbers. Be honest about what their score means for their body and mind right now. Give them one real mindset shift they need to hear. Sound like a caring friend, not a robot. If it is night time, acknowledge that staying up late is already part of the problem and say it with warmth not judgment.
+PART 1 — Personal message (4 to 6 sentences): Validate their emotion using their actual numbers. Be honest about what their score means for their body and mind right now. Give them one real mindset shift they need to hear. Sound like a caring friend, not a robot. If it is late night, remind them that their brain is at its cognitive low point and sleep is the only productive choice left.
 
-PART 2 — Recovery or productivity schedule starting at ${scheduleStart}, every 30 minutes, exactly 6 slots. Each action must be a full descriptive sentence. Every slot must be different, never repeat. No single-word actions. If it is night time, the schedule must guide them toward sleep, not keep them awake. If it is morning or daytime, the schedule should reflect a healthy and realistic plan based on their score and data.
+PART 2 — Recovery or productivity schedule starting at ${scheduleStart}, every ${scheduleInterval} minutes, exactly ${scheduleSlots} slots. Each action must be a full descriptive sentence. Every slot must be different, never repeat. No single-word actions.
+${scheduleModeInstruction}
 
 Format exactly as:
 SCHEDULE:
-[time]: [full sentence action]
-[time]: [full sentence action]
-[time]: [full sentence action]
-[time]: [full sentence action]
-[time]: [full sentence action]
-[time]: [full sentence action]
+${slotLines}
 ${habitSection}
 Total response under 400 words.`;
 }
+
 
 /**
  * Fetches advice from Groq AI.

@@ -13,24 +13,37 @@ let selectedEmotion = null;
 document.addEventListener('DOMContentLoaded', () => {
     initEmotionSelector();
     initStudySessions();
+    initBreakSelector();
     renderHistory();
     initResultsModal();
+    initUserProfile();
+    initSearch();
 
     // Fetch daily AI wellness tip on load
     getWellnessTip().then(tip => {
-        document.getElementById('hero-reminder-text').textContent = tip;
+        const tipEl = document.getElementById('hero-reminder-text');
+        if (tipEl) tipEl.textContent = tip;
     });
 
-    // Listen for form submission
     const checkinForm = document.getElementById('checkin-form');
-    checkinForm.addEventListener('submit', handleCheckin);
+    if (checkinForm) checkinForm.addEventListener('submit', handleCheckin);
+
+    // History Popup Listeners
+    const historyPopup = document.getElementById('history-popup');
+    if (historyPopup) {
+        historyPopup.querySelector('.history-popup-close')?.addEventListener('click', () => {
+            historyPopup.classList.add('hidden');
+        });
+        historyPopup.querySelector('.history-popup-backdrop')?.addEventListener('click', () => {
+            historyPopup.classList.add('hidden');
+        });
+    }
 });
 
-// --- RESULTS MODAL ---
+// --- RESULTS MODAL (legacy fallback) ---
 function initResultsModal() {
     const closeBtn = document.getElementById('results-modal-close');
     const backdrop = document.getElementById('results-modal-backdrop');
-
     if (closeBtn) closeBtn.addEventListener('click', closeResultsModal);
     if (backdrop) backdrop.addEventListener('click', closeResultsModal);
 }
@@ -51,8 +64,12 @@ function closeResultsModal() {
     }
 }
 
+// --- STUDY SESSIONS ---
 function initStudySessions() {
-    document.getElementById("btn-add-session").addEventListener("click", () => {
+    const addButton = document.getElementById("btn-add-session");
+    if (!addButton) return;
+
+    addButton.addEventListener("click", () => {
         const list = document.getElementById("session-list");
         const index = list.querySelectorAll(".session-row").length;
 
@@ -60,23 +77,23 @@ function initStudySessions() {
         row.className = "session-row";
         row.setAttribute("data-index", index);
         row.innerHTML = `
-            <div class="session-fields">
-                <input type="text" class="session-subject" placeholder="Subject (e.g. Math)" />
-                <div class="hours-unit-wrapper">
-                    <input type="number" class="session-hours" placeholder="Value" min="0" step="0.5" />
-                    <div class="unit-toggle">
-                        <button type="button" class="unit-btn active" data-unit="hours">hrs</button>
-                        <button type="button" class="unit-btn" data-unit="minutes">min</button>
-                    </div>
+            <input type="text" class="session-subject input-field" placeholder="Subject (e.g. Math)" />
+            <div class="hours-unit-wrapper">
+                <input type="number" class="session-hours input-field" placeholder="Time" min="0" step="0.5" />
+                <div class="unit-toggle">
+                    <button type="button" class="unit-btn active" data-unit="hours">hrs</button>
+                    <button type="button" class="unit-btn" data-unit="minutes">min</button>
                 </div>
-                <select class="session-break">
-                    <option value="">Breaks?</option>
-                    <option value="yes">Yes</option>
-                    <option value="short">Short</option>
-                    <option value="no">No</option>
-                </select>
-                <button type="button" class="btn-remove-session">✕</button>
             </div>
+            <select class="session-break input-field">
+                <option value="">Breaks?</option>
+                <option value="yes">Yes</option>
+                <option value="short">Short</option>
+                <option value="no">No</option>
+            </select>
+            <button type="button" class="btn-icon btn-remove-session" aria-label="Remove session">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
         `;
         list.appendChild(row);
 
@@ -90,6 +107,8 @@ function initStudySessions() {
                 this.classList.add("active");
             });
         });
+
+        updateRemoveButtonsVisibility();
     });
 
     document.querySelectorAll(".btn-remove-session").forEach(btn => {
@@ -106,6 +125,36 @@ function initStudySessions() {
             });
         });
     });
+
+    updateRemoveButtonsVisibility();
+}
+
+function initBreakSelector() {
+    const buttons = document.querySelectorAll('.break-btn');
+    const input = document.getElementById('days-break');
+    if (!buttons.length || !input) return;
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            input.value = btn.dataset.value;
+        });
+    });
+
+    input.addEventListener('input', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+    });
+}
+
+function updateRemoveButtonsVisibility() {
+    const rows = document.querySelectorAll(".session-row");
+    rows.forEach(row => {
+        const removeBtn = row.querySelector(".btn-remove-session");
+        if (removeBtn) {
+            removeBtn.style.display = rows.length > 1 ? "flex" : "none";
+        }
+    });
 }
 
 function removeSession(btn) {
@@ -113,6 +162,7 @@ function removeSession(btn) {
     const list = document.getElementById("session-list");
     if (list.querySelectorAll(".session-row").length > 1) {
         row.remove();
+        updateRemoveButtonsVisibility();
     }
 }
 
@@ -156,20 +206,15 @@ function initEmotionSelector() {
 async function handleCheckin(e) {
     e.preventDefault();
 
-    // 1. Gather Inputs
     const studyData = collectStudySessions();
     const sleepHours = parseFloat(document.getElementById('sleep-hours').value);
     const pendingTasks = parseInt(document.getElementById('pending-tasks').value);
     const daysSinceBreak = parseInt(document.getElementById('days-break').value);
     const emotionLabel = selectedEmotion;
 
-    // Calculate total study hours from sessions
     let studyHours = studyData.sessions.reduce((sum, s) => sum + s.hours, 0);
-    // Round to 4 decimal places to avoid floating point artifacts
     studyHours = Math.round(studyHours * 10000) / 10000;
 
-
-    // 2. Validate
     if (!emotionLabel) {
         alert("Please select how you are feeling!");
         return;
@@ -185,15 +230,17 @@ async function handleCheckin(e) {
         return;
     }
 
-    // 3. UI State: Loading
     const loadingSpinner = document.getElementById('loading-section');
     const submitBtn = document.querySelector('.btn-submit');
+    const statusCard = document.getElementById('status-card');
+    const resultsContainer = document.getElementById('results-container');
 
+    if (statusCard) statusCard.classList.add('hidden');
+    if (resultsContainer) resultsContainer.classList.add('hidden');
     loadingSpinner.classList.remove('hidden');
-    submitBtn.disabled = true;
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-        // 4. Calculate Score
         const stressValue = emotionToValue(emotionLabel);
         const score = calculateBurnoutScore({
             sleep: sleepHours,
@@ -205,23 +252,23 @@ async function handleCheckin(e) {
         });
         const { level, message, colorClass } = getScoreLevel(score);
 
-        // 4.5 Calculate Productivity
         const productivity = calculateProductivityScore({
             study: studyHours,
             tasks: pendingTasks,
-            sessions: studyData.sessions
+            sessions: studyData.sessions,
+            burnoutScore: score,
+            sleep: sleepHours,
+            stressValue: stressValue
         });
 
-
-        // 5. Get AI Advice (separate args)
         const aiAdvice = await getGroqAdvice(emotionLabel, stressValue, score, {
             sleepHours, studyHours, pendingTasks, daysSinceBreak
         }, studyData);
 
-        // 6. Save to Firebase
         const currentTime = new Date().toLocaleTimeString("en-US", {
             hour: "2-digit", minute: "2-digit", hour12: true
         });
+
         const checkinData = {
             date: new Date().toLocaleDateString(),
             time: currentTime,
@@ -238,14 +285,7 @@ async function handleCheckin(e) {
 
         await saveCheckin(checkinData);
 
-        // 7. Parse AI response — split into advice message and schedule
-        const aiAdviceTextEl = document.getElementById("ai-advice-text");
-        const scheduleBoxEl = document.getElementById("schedule-box");
-        const scheduleListEl = document.getElementById("schedule-list");
-        const habitBoxEl = document.getElementById("habit-feedback-box");
-        const habitTextEl = document.getElementById("habit-feedback-text");
-
-        // Split the response at "SCHEDULE:"
+        // Parse AI response
         const scheduleSplit = aiAdvice.split("SCHEDULE:");
         const adviceMessage = scheduleSplit[0].trim();
         const scheduleRaw = scheduleSplit[1] ? scheduleSplit[1].split("HABIT_FEEDBACK:")[0].trim() : null;
@@ -253,57 +293,125 @@ async function handleCheckin(e) {
             ? aiAdvice.split("HABIT_FEEDBACK:")[1].trim()
             : null;
 
-        aiAdviceTextEl.textContent = adviceMessage;
+        // Render results (new inline layout)
+        if (resultsContainer) {
+            resultsContainer.classList.remove('hidden');
 
-        // If schedule exists, render it
-        if (scheduleRaw && scheduleBoxEl) {
-            const lines = scheduleRaw.split("\n").filter(line => line.trim() !== "");
-            scheduleListEl.innerHTML = "";
-            lines.forEach(line => {
-                const li = document.createElement("li");
-                li.textContent = line.trim();
-                scheduleListEl.appendChild(li);
-            });
-            scheduleBoxEl.classList.remove("hidden");
+            let scheduleHTML = '';
+            if (scheduleRaw) {
+                const lines = scheduleRaw.split("\n").filter(l => l.trim());
+                scheduleHTML = `
+                    <div class="card schedule-card">
+                        <p class="schedule-label">
+                            <span class="label-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="8"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </span>
+                            YOUR RECOVERY SCHEDULE
+                        </p>
+                        <ul class="schedule-list">
+                            ${lines.map(l => `<li>${l.trim()}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            let habitHTML = '';
+            if (habitFeedback) {
+                const paragraphs = habitFeedback.split("\n").filter(l => l.trim()).map(l => `<p>${l}</p>`).join('');
+                habitHTML = `
+                    <div class="card habit-card">
+                        <p class="habit-label">
+                            <span class="label-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5a2.5 2.5 0 0 1 2.5-2.5h11a2.5 2.5 0 0 1 2.5 2.5"></path>
+                                    <path d="M4 6.5a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 6.5v11"></path>
+                                    <path d="M4 9.5h16"></path>
+                                </svg>
+                            </span>
+                            STUDY HABIT ANALYSIS
+                        </p>
+                        <div class="habit-feedback-text">${paragraphs}</div>
+                    </div>
+                `;
+            }
+
+            resultsContainer.innerHTML = `
+                <div class="productivity-section">
+                    <h3>Academic Productivity</h3>
+                    <div id="results-productivity-container" class="productivity-container-large"></div>
+                </div>
+
+                <div class="result-card result-${level.toLowerCase()} ${colorClass}">
+                    <div class="score-number">${score}</div>
+                    <div class="score-label">${level} BURNOUT RISK</div>
+                    <div class="score-message">${message}</div>
+                </div>
+
+                <div class="advice-card">
+                    <div class="advice-label">AI Advisor Insight</div>
+                    <div class="advice-text">${adviceMessage}</div>
+                </div>
+
+                ${scheduleHTML}
+                ${habitHTML}
+            `;
+
+            renderProductivityCircle(productivity, 'results-productivity-container', emotionLabel);
         } else {
-            if (scheduleBoxEl) scheduleBoxEl.classList.add("hidden");
+            // Fallback to legacy modal rendering
+            const aiAdviceTextEl = document.getElementById("ai-advice-text");
+            const scheduleBoxEl = document.getElementById("schedule-box");
+            const scheduleListEl = document.getElementById("schedule-list");
+            const habitBoxEl = document.getElementById("habit-feedback-box");
+            const habitTextEl = document.getElementById("habit-feedback-text");
+
+            if (aiAdviceTextEl) aiAdviceTextEl.textContent = adviceMessage;
+
+            if (scheduleRaw && scheduleBoxEl && scheduleListEl) {
+                const lines = scheduleRaw.split("\n").filter(line => line.trim() !== "");
+                scheduleListEl.innerHTML = "";
+                lines.forEach(line => {
+                    const li = document.createElement("li");
+                    li.textContent = line.trim();
+                    scheduleListEl.appendChild(li);
+                });
+                scheduleBoxEl.classList.remove("hidden");
+            } else if (scheduleBoxEl) {
+                scheduleBoxEl.classList.add("hidden");
+            }
+
+            if (habitFeedback && habitBoxEl && habitTextEl) {
+                habitTextEl.innerHTML = habitFeedback.split("\n").filter(line => line.trim()).map(line => `<p>${line}</p>`).join("");
+                habitBoxEl.classList.remove("hidden");
+            } else if (habitBoxEl) {
+                habitBoxEl.classList.add("hidden");
+            }
+
+            const scoreNumEl = document.getElementById('score-number');
+            const scoreLabelEl = document.getElementById('score-label');
+            const scoreMsgEl = document.getElementById('score-message');
+            const scoreCardEl = document.getElementById('score-result-card');
+
+            if (scoreNumEl) scoreNumEl.textContent = score;
+            if (scoreLabelEl) scoreLabelEl.textContent = `${level} BURNOUT RISK`;
+            if (scoreMsgEl) scoreMsgEl.textContent = message;
+            if (scoreCardEl) scoreCardEl.className = `result-card result-${level.toLowerCase()} ${colorClass}`;
+
+            renderProductivityCircle(productivity, 'results-productivity-container', emotionLabel);
+            openResultsModal();
         }
 
-        // If habit feedback exists, render it
-        if (habitFeedback && habitBoxEl) {
-            habitTextEl.innerHTML = habitFeedback
-                .split("\n")
-                .filter(line => line.trim())
-                .map(line => `<p>${line}</p>`)
-                .join("");
-            habitBoxEl.classList.remove("hidden");
-        } else {
-            if (habitBoxEl) habitBoxEl.classList.add("hidden");
-        }
-
-        // 8. Update Score UI
-        document.getElementById('score-number').textContent = score;
-        document.getElementById('score-label').textContent = `${level} BURNOUT RISK`;
-        document.getElementById('score-message').textContent = message;
-
-        // Apply score color classes
-        const scoreCard = document.getElementById('score-result-card');
-        scoreCard.className = `result-card result-${level.toLowerCase()} ${colorClass}`;
-
-        // 9. UI State: Show modal
-        loadingSpinner.classList.add('hidden');
-        renderProductivityCircle(productivity, 'results-productivity-container');
-        openResultsModal();
-
-
-        // 10. Refresh history
         renderHistory();
 
     } catch (error) {
         console.error("Check-in failed:", error);
         alert("Something went wrong. Please try again.");
+        if (statusCard) statusCard.classList.remove('hidden');
     } finally {
-        submitBtn.disabled = false;
+        if (submitBtn) submitBtn.disabled = false;
         loadingSpinner.classList.add('hidden');
     }
 }
@@ -311,10 +419,20 @@ async function handleCheckin(e) {
 // --- HISTORY ---
 async function renderHistory() {
     const historyList = document.getElementById('history-list');
+    const historyCount = document.getElementById('history-count');
     const history = await getHistory();
 
+    if (historyCount) historyCount.textContent = history.length;
+
     if (history.length === 0) {
-        historyList.innerHTML = '<div class="empty-history">No check-ins yet. Start your first one above! 👆</div>';
+        historyList.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p>No check-ins yet</p>
+            </div>
+        `;
         return;
     }
 
@@ -327,19 +445,20 @@ async function renderHistory() {
 
         div.innerHTML = `
             <div class="history-header">
-                <div class="history-date">${entry.date}<span class="history-time">${entry.time || ''}</span></div>
-                <div class="history-emotion-tag tag-${entry.emotion.toLowerCase()}">${entry.emotion}</div>
-                <div class="history-score ${colorClass}">${entry.score} / 100</div>
+                <div class="history-date-group">
+                    <div class="history-date">${entry.date}</div>
+                    <div class="history-time">${entry.time || ''}</div>
+                </div>
+                <div class="history-meta">
+                    <div class="history-emotion-tag tag-${entry.emotion.toLowerCase()}">${entry.emotion}</div>
+                    <div class="history-score ${colorClass}">${entry.score} / 100</div>
+                </div>
             </div>
         `;
 
-        div.addEventListener('click', () => {
-            showHistoryPopup(entry);
-        });
-
+        div.addEventListener('click', () => showHistoryPopup(entry));
         historyList.appendChild(div);
     });
-
 }
 
 function showHistoryPopup(entry) {
@@ -361,54 +480,148 @@ function showHistoryPopup(entry) {
             <span>Academic Productivity</span>
             <div id="history-productivity-container" class="productivity-container-small"></div>
         </div>
+        <div id="history-productivity-detail"></div>
         ${entry.aiAdvice ? `<div class="history-popup-detail"><strong>AI insight:</strong> ${entry.aiAdvice}</div>` : ''}
     `;
 
-    renderProductivityCircle(entry.productivity || 0, 'history-productivity-container');
+    renderProductivityCircle(entry.productivity || 0, 'history-productivity-container', entry.emotion);
     popup.classList.remove('hidden');
 }
 
-/**
- * Formats duration in hours to a readable string
- */
 function formatDuration(hours) {
     if (hours === 0) return "0 hrs";
-    if (hours < 1) {
-        return Math.round(hours * 60) + " mins";
-    }
+    if (hours < 1) return Math.round(hours * 60) + " mins";
     return (Math.round(hours * 10) / 10) + " hrs";
 }
 
-/**
- * Renders the circular productivity UI
- */
-function renderProductivityCircle(percent, containerId) {
+function getProductivityLabel(percent) {
+    if (percent >= 60) return "Peak Performance";
+    if (percent >= 30) return "Moderate Efficiency";
+    return "Impaired Function";
+}
+
+function getProductivityMessage(percent, emotion) {
+    // Emotion-specific logic
+    if (emotion === "Stressed" && percent >= 30 && percent < 60) {
+        return "Your stress level is elevating this fatigue — calming activities would help more than another study session.";
+    }
+    if (emotion === "Exhausted" && percent < 30) {
+        return "Being exhausted means your body is forcing a shutdown. Listen to it.";
+    }
+    if (emotion === "Overwhelmed" && percent < 30) {
+        return "Overwhelm is your brain's emergency brake. Step away from everything for a while.";
+    }
+    if (emotion === "Energetic" && percent >= 60) {
+        return "Your energy matches your capacity — this is the sweet spot.";
+    }
+
+    // Default messages
+    if (percent >= 60) {
+        return "Your mind is sharp and ready. You can tackle complex problems, learn new concepts quickly, and maintain deep focus. Make the most of this peak state — it's the right time for challenging work.";
+    }
+    if (percent >= 30) {
+        return "You can still get things done, but your mental stamina is wearing thin. It's like running with a small stone in your shoe — manageable now, but painful if you keep going. Take strategic breaks before fatigue wins.";
+    }
+    return "Your cognitive resources are critically low. Studying right now is like pouring water into a cracked cup — nothing sticks. Please stop and rest. Your brain needs recovery, not more input.";
+}
+
+function renderProductivityCircle(percent, containerId, emotion = null) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    const isLarge = container.classList.contains('productivity-container-large');
     const radius = 35;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (percent / 100) * circumference;
+
+    // Determine color class based on productivity level
+    let levelClass = 'low';
+    if (percent >= 60) levelClass = 'high';
+    else if (percent >= 30) levelClass = 'moderate';
+
+    const label = getProductivityLabel(percent);
+    const message = getProductivityMessage(percent, emotion);
 
     container.innerHTML = `
         <div class="productivity-circle-wrapper">
             <svg class="productivity-circle" viewBox="0 0 100 100">
                 <circle class="bg" cx="50" cy="50" r="${radius}" />
-                <circle class="meter" cx="50" cy="50" r="${radius}" 
+                <circle class="meter" cx="50" cy="50" r="${radius}"
                     style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};" />
             </svg>
-            <div class="percent">${percent}%</div>
+            <div class="percent ${levelClass}">${percent}%</div>
         </div>
     `;
+
+    if (isLarge) {
+        const section = container.parentElement;
+        // Clean up any existing labels/messages to prevent duplicates
+        section.querySelectorAll('.productivity-label, .productivity-message').forEach(el => el.remove());
+        
+        const labelEl = document.createElement('div');
+        labelEl.className = `productivity-label ${levelClass}`;
+        labelEl.textContent = label;
+        
+        const messageEl = document.createElement('div');
+        messageEl.className = 'productivity-message';
+        messageEl.textContent = message;
+        
+        section.appendChild(labelEl);
+        section.appendChild(messageEl);
+    }
+
+    // Handle history popup detail if needed
+    if (containerId === 'history-productivity-container') {
+        const detailEl = document.getElementById('history-productivity-detail');
+        if (detailEl) {
+            detailEl.innerHTML = `
+                <div class="history-popup-productivity-detail">
+                    <span class="productivity-mini-label ${levelClass}">${label}</span>
+                    <p class="productivity-mini-message">${message}</p>
+                </div>
+            `;
+        }
+    }
 }
 
+function initUserProfile() {
+    const nameEls = document.querySelectorAll('.profile-chip p, .topbar h1');
+    const avatarEl = document.querySelector('.profile-avatar');
+    const savedName = localStorage.getItem('nightr41d_user_name') || "John Doe";
+    updateNameUI(savedName);
 
-const historyPopup = document.getElementById('history-popup');
-if (historyPopup) {
-    historyPopup.querySelector('.history-popup-close')?.addEventListener('click', () => {
-        historyPopup.classList.add('hidden');
-    });
-    historyPopup.querySelector('.history-popup-backdrop')?.addEventListener('click', () => {
-        historyPopup.classList.add('hidden');
-    });
+    const profileChip = document.querySelector('.profile-chip');
+    if (profileChip) {
+        profileChip.style.cursor = 'pointer';
+        profileChip.addEventListener('click', () => {
+            const newName = prompt("Enter your name:", localStorage.getItem('nightr41d_user_name') || "John Doe");
+            if (newName && newName.trim()) {
+                localStorage.setItem('nightr41d_user_name', newName.trim());
+                updateNameUI(newName.trim());
+            }
+        });
+    }
+
+    function updateNameUI(name) {
+        nameEls.forEach(el => {
+            if (el.tagName === 'H1') {
+                el.textContent = `Welcome back, ${name.split(' ')[0]}!`;
+            } else {
+                el.textContent = name;
+            }
+        });
+        if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+    }
+}
+
+function initSearch() {
+    const searchInput = document.querySelector('.search-wrapper input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                alert(`Search for "${searchInput.value}" is not available in the demo version.`);
+                searchInput.value = '';
+            }
+        });
+    }
 }
