@@ -105,3 +105,30 @@ export function getScoreLevel(score) {
         };
     }
 }
+
+/**
+ * Calculates academic productivity percentage.
+ * @param {Object} inputs - { study, tasks, sessions }
+ * @returns {number} - 0 to 100
+ */
+export function calculateProductivityScore({ study, tasks, sessions }) {
+    // Base productivity from study hours (diminishing returns after 6 hours)
+    // 0 hrs = 0 pts, 3 hrs = 60 pts, 6 hrs = 90 pts, 10 hrs = 100 pts
+    let studyFactor = (study / (study + 2)) * 100;
+    
+    // Penalty for pending tasks
+    let taskPenalty = tasks * 7;
+    
+    // Habit bonus (proper breaks help productivity)
+    let habitBonus = 0;
+    if (sessions && sessions.length > 0) {
+        const totalSessions = sessions.length;
+        const goodBreaks = sessions.filter(s => s.breakTaken === 'yes').length;
+        habitBonus = (goodBreaks / totalSessions) * 15;
+    }
+
+    let total = studyFactor - taskPenalty + habitBonus;
+    
+    // Ensure it's between 0 and 100
+    return Math.min(Math.round(Math.max(0, total)), 100);
+}

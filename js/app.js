@@ -3,9 +3,9 @@
  * Connects UI events to logic, AI, and database modules.
  */
 
-import { emotionToValue, calculateBurnoutScore, getScoreLevel } from './score.js';
+import { emotionToValue, calculateBurnoutScore, getScoreLevel, calculateProductivityScore } from './score.js';
 import { getGroqAdvice, getWellnessTip } from './groq.js';
-import { saveCheckin, getHistory, deleteCheckin } from './firebase.js';
+import { saveCheckin, getHistory } from './firebase.js';
 
 let selectedEmotion = null;
 
@@ -14,17 +14,42 @@ document.addEventListener('DOMContentLoaded', () => {
     initEmotionSelector();
     initStudySessions();
     renderHistory();
+    initResultsModal();
 
     // Fetch daily AI wellness tip on load
     getWellnessTip().then(tip => {
-        document.getElementById('wellness-tip-text').textContent = tip;
-        document.getElementById('wellness-tip-box').classList.remove('hidden');
+        document.getElementById('hero-reminder-text').textContent = tip;
     });
 
     // Listen for form submission
     const checkinForm = document.getElementById('checkin-form');
     checkinForm.addEventListener('submit', handleCheckin);
 });
+
+// --- RESULTS MODAL ---
+function initResultsModal() {
+    const closeBtn = document.getElementById('results-modal-close');
+    const backdrop = document.getElementById('results-modal-backdrop');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeResultsModal);
+    if (backdrop) backdrop.addEventListener('click', closeResultsModal);
+}
+
+function openResultsModal() {
+    const modal = document.getElementById('results-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeResultsModal() {
+    const modal = document.getElementById('results-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
 
 function initStudySessions() {
     document.getElementById("btn-add-session").addEventListener("click", () => {
@@ -139,7 +164,10 @@ async function handleCheckin(e) {
     const emotionLabel = selectedEmotion;
 
     // Calculate total study hours from sessions
-    const studyHours = studyData.sessions.reduce((sum, s) => sum + s.hours, 0);
+    let studyHours = studyData.sessions.reduce((sum, s) => sum + s.hours, 0);
+    // Round to 4 decimal places to avoid floating point artifacts
+    studyHours = Math.round(studyHours * 10000) / 10000;
+
 
     // 2. Validate
     if (!emotionLabel) {
@@ -159,11 +187,9 @@ async function handleCheckin(e) {
 
     // 3. UI State: Loading
     const loadingSpinner = document.getElementById('loading-section');
-    const resultSection = document.getElementById('results-section');
     const submitBtn = document.querySelector('.btn-submit');
 
     loadingSpinner.classList.remove('hidden');
-    resultSection.classList.add('hidden');
     submitBtn.disabled = true;
 
     try {
@@ -178,6 +204,14 @@ async function handleCheckin(e) {
             sessions: studyData.sessions
         });
         const { level, message, colorClass } = getScoreLevel(score);
+
+        // 4.5 Calculate Productivity
+        const productivity = calculateProductivityScore({
+            study: studyHours,
+            tasks: pendingTasks,
+            sessions: studyData.sessions
+        });
+
 
         // 5. Get AI Advice (separate args)
         const aiAdvice = await getGroqAdvice(emotionLabel, stressValue, score, {
@@ -198,8 +232,10 @@ async function handleCheckin(e) {
             tasks: pendingTasks,
             lastBreak: daysSinceBreak,
             score,
+            productivity,
             aiAdvice
         };
+
         await saveCheckin(checkinData);
 
         // 7. Parse AI response — split into advice message and schedule
@@ -252,12 +288,13 @@ async function handleCheckin(e) {
 
         // Apply score color classes
         const scoreCard = document.getElementById('score-result-card');
-        scoreCard.className = `card result-card result-${level.toLowerCase()} ${colorClass}`;
+        scoreCard.className = `result-card result-${level.toLowerCase()} ${colorClass}`;
 
-        // 9. UI State: Success
+        // 9. UI State: Show modal
         loadingSpinner.classList.add('hidden');
-        resultSection.classList.remove('hidden');
-        resultSection.scrollIntoView({ behavior: 'smooth' });
+        renderProductivityCircle(productivity, 'results-productivity-container');
+        openResultsModal();
+
 
         // 10. Refresh history
         renderHistory();
@@ -283,43 +320,95 @@ async function renderHistory() {
 
     historyList.innerHTML = '';
     history.forEach(entry => {
-        const { level, colorClass } = getScoreLevel(entry.score);
+        const { colorClass } = getScoreLevel(entry.score);
 
         const div = document.createElement('div');
         div.className = 'history-item';
 
-        // Extract a preview from the AI advice (first sentence)
-        const advicePreview = entry.aiAdvice ? entry.aiAdvice.split('.')[0] + '.' : '';
-
         div.innerHTML = `
-            <div>
-                <div class="history-date">${entry.date} <span class="history-time">${entry.time || ''}</span></div>
+            <div class="history-header">
+                <div class="history-date">${entry.date}<span class="history-time">${entry.time || ''}</span></div>
                 <div class="history-emotion-tag tag-${entry.emotion.toLowerCase()}">${entry.emotion}</div>
                 <div class="history-score ${colorClass}">${entry.score} / 100</div>
-                <button class="delete-history-btn" data-id="${entry.id}" title="Delete Check-in">✕</button>
             </div>
-            ${advicePreview ? `<div class="history-advice-preview">"${advicePreview}"</div>` : ''}
         `;
+
+        div.addEventListener('click', () => {
+            showHistoryPopup(entry);
+        });
+
         historyList.appendChild(div);
     });
 
-    // Add event listeners for delete buttons
-    const deleteBtns = historyList.querySelectorAll('.delete-history-btn');
-    deleteBtns.forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.target.dataset.id;
-            if (confirm('Are you sure you want to delete this check-in?')) {
-                e.target.disabled = true;
-                e.target.innerHTML = '<div class="spinner-small"></div>';
-                const success = await deleteCheckin(id);
-                if (success) {
-                    renderHistory(); // Refresh the list
-                } else {
-                    alert('Failed to delete check-in. Please try again.');
-                    e.target.disabled = false;
-                    e.target.textContent = '✕';
-                }
-            }
-        });
+}
+
+function showHistoryPopup(entry) {
+    const popup = document.getElementById('history-popup');
+    const popupBody = document.getElementById('history-popup-body');
+    if (!popup || !popupBody) return;
+
+    popupBody.innerHTML = `
+        <div class="history-popup-row"><span>Date</span><strong>${entry.date}</strong></div>
+        <div class="history-popup-row"><span>Time</span><strong>${entry.time || '—'}</strong></div>
+        <div class="history-popup-row"><span>Emotion</span><strong>${entry.emotion}</strong></div>
+        <div class="history-popup-row"><span>Score</span><strong>${entry.score} / 100</strong></div>
+        <div class="history-popup-row"><span>Sleep</span><strong>${entry.sleep} hrs</strong></div>
+        <div class="history-popup-row"><span>Study</span><strong>${formatDuration(entry.study)}</strong></div>
+        <div class="history-popup-row"><span>Pending tasks</span><strong>${entry.tasks}</strong></div>
+        <div class="history-popup-row"><span>Days since break</span><strong>${entry.lastBreak}</strong></div>
+        <div class="history-popup-row"><span>Burnout level</span><strong>${getScoreLevel(entry.score).level}</strong></div>
+        <div class="history-popup-productivity">
+            <span>Academic Productivity</span>
+            <div id="history-productivity-container" class="productivity-container-small"></div>
+        </div>
+        ${entry.aiAdvice ? `<div class="history-popup-detail"><strong>AI insight:</strong> ${entry.aiAdvice}</div>` : ''}
+    `;
+
+    renderProductivityCircle(entry.productivity || 0, 'history-productivity-container');
+    popup.classList.remove('hidden');
+}
+
+/**
+ * Formats duration in hours to a readable string
+ */
+function formatDuration(hours) {
+    if (hours === 0) return "0 hrs";
+    if (hours < 1) {
+        return Math.round(hours * 60) + " mins";
+    }
+    return (Math.round(hours * 10) / 10) + " hrs";
+}
+
+/**
+ * Renders the circular productivity UI
+ */
+function renderProductivityCircle(percent, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const radius = 35;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (percent / 100) * circumference;
+
+    container.innerHTML = `
+        <div class="productivity-circle-wrapper">
+            <svg class="productivity-circle" viewBox="0 0 100 100">
+                <circle class="bg" cx="50" cy="50" r="${radius}" />
+                <circle class="meter" cx="50" cy="50" r="${radius}" 
+                    style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};" />
+            </svg>
+            <div class="percent">${percent}%</div>
+        </div>
+    `;
+}
+
+
+const historyPopup = document.getElementById('history-popup');
+if (historyPopup) {
+    historyPopup.querySelector('.history-popup-close')?.addEventListener('click', () => {
+        historyPopup.classList.add('hidden');
+    });
+    historyPopup.querySelector('.history-popup-backdrop')?.addEventListener('click', () => {
+        historyPopup.classList.add('hidden');
     });
 }
