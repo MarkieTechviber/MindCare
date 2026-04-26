@@ -8,33 +8,57 @@
 ## 📋 Project Overview
 **NightR41d.exe** is a web-based Student Burnout Prevention System designed to help students monitor their academic stress levels. By conducting daily emotional and workload check-ins, the app provides AI-generated personalized advice to help prevent burnout before it happens.
 
+---
+
 ## ✨ Features
-- 🎭 **Emotion-based Stress Selector**: Intuitive selection from 🟢 Energetic to 🔥 Overwhelmed.
-- 📊 **Burnout Score Calculator**: Real-time calculation with color-coded results (Green/Yellow/Red).
-- 🤖 **AI Advice**: Personalized guidance powered by Groq AI (LLaMA 3).
-- ☁️ **Cloud Sync**: History is saved and retrieved from Firebase Firestore.
-- 💡 **Wellness Tip of the Day**: Daily inspiration for mental well-being.
+- 🎭 **Emotion-based Stress Selector** — Intuitive selection from 🟢 Energetic to 🔥 Overwhelmed, with color-coded active state per emotion.
+- 📊 **Burnout Score Calculator** — Real-time calculation with color-coded results (Green / Yellow / Red).
+- 📈 **Academic Productivity Score** — A separate 0–100% metric showing how effective the student's study day was, displayed as an animated circular progress indicator.
+- 🤖 **AI Advice (Groq + LLaMA 3.3)** — Personalized insights split into three distinct sections: AI Advisor Insight, Recovery Schedule, and Study Habit Analysis.
+- 🕐 **Time-Aware Recovery Schedule** — The AI schedule dynamically adapts to the current time of day using a 5-zone classifier (Late Night, Early Night, Evening, Peak Study, Morning).
+- ☁️ **Cloud Sync** — Check-in history is saved to and retrieved from Firebase Firestore, scoped per device using a unique device ID.
+- 📂 **History Popup** — Clicking any history entry opens a detail popup showing all saved metrics including productivity score and AI insight.
+- 👤 **User Profile** — Users can set and update their display name, stored in `localStorage`, shown in the top bar and profile chip.
+- 🔍 **Search Bar** — UI search element present for future expansion (demo placeholder active).
+- 💡 **Wellness Tip of the Day** — A dynamic AI-generated daily reminder fetched from Groq on page load.
+- 🌱 **"Just Started Today" Quick-Select** — A convenience button that sets "days since last break" to 0 so new students aren't penalized unfairly.
+- ⏱️ **Hours/Minutes Unit Toggle** — Each study session entry supports toggling between hours and minutes for flexible time input.
+- 📝 **Study Notes Field** — Free-text field for students to describe their session experience, passed directly into the AI prompt for richer context.
+- 🗂️ **Multi-Session Logging** — Students can log multiple study subjects in one check-in, each with their own duration and break behavior.
+
+---
 
 ## 🛠 Tech Stack
 | Component | Technology |
 |---|---|
 | **Frontend** | HTML5, CSS3, Vanilla JavaScript (ES Modules) |
 | **Database** | Firebase Firestore (via CDN) |
-| **AI Engine** | Groq AI (Model: llama-3.3-70b-versatile) |
+| **AI Engine** | Groq AI (Model: `llama-3.3-70b-versatile`) |
 | **Design** | DM Sans & Space Mono (Google Fonts) |
 
+---
+
 ## 📂 File Structure
-- `index.html`: Main application interface.
-- `css/`: Styling directory.
-  - `style.css`: Global styles and design system.
-  - `components.css`: Component-specific styling.
-- `js/`: Application logic directory.
-  - `app.js`: Main controller.
-  - `firebase.js`: Firestore integration.
-  - `groq.js`: Groq AI integration.
-  - `score.js`: Burnout score logic.
-- `.env`: Environment variables (Local only).
-- `README.md`: Project documentation.
+```
+project/
+├── index.html              # Main application interface
+├── css/
+│   ├── style.css           # Global styles and design system
+│   └── components.css      # Component-specific styling
+├── js/
+│   ├── app.js              # Main controller (UI, events, rendering)
+│   ├── firebase.js         # Firestore integration (save, get, clear, delete)
+│   ├── groq.js             # Groq AI integration (advice + wellness tip)
+│   └── score.js            # Burnout score + productivity score logic
+├── tests/
+│   ├── test_logic_standalone.js   # Standalone time-zone schedule logic test
+│   ├── test_prompt_logic.js       # Full prompt builder test with mock dates
+│   └── test_score.js              # Productivity score unit tests
+├── firestore.rules         # Firebase security rules
+└── README.md               # Project documentation
+```
+
+---
 
 ## 🚀 Setup Instructions
 1. **Clone the repository**:
@@ -47,22 +71,31 @@
 3. **Firebase Setup**:
    - Create a project at [firebase.google.com](https://firebase.google.com).
    - Enable Firestore in **test mode**.
-   - Copy your app config to `.env`.
+   - Copy your app config into `js/firebase.js`.
 4. **Groq Setup**:
    - Sign up at [console.groq.com](https://console.groq.com).
-   - Generate an API key and copy it to `.env`.
+   - Generate an API key and paste it into `js/groq.js`.
 5. **Launch**:
-   - Open `index.html` in any modern browser. No server required!
+   - Open `index.html` in any modern browser. No build step or server required!
+
+---
 
 ## ⚙️ How It Works
 The app follows a **Human-to-Machine Pipeline**:
-1. **Input**: Student selects an emotion and enters workload data.
-2. **Processing**: Emotion is mapped to a numeric value. The `score.js` module calculates a total burnout score (0-100).
-3. **AI Generation**: A custom prompt is sent to Groq AI based on the score and emotion.
-4. **Output**: Personalized advice is displayed and the check-in is saved to Firestore.
 
-### Emotion-to-Value Mapping
-| Emotion | Value |
+1. **Profile** — Student sets their name (saved to `localStorage`, shown in topbar and profile chip).
+2. **Study Logging** — Student logs one or more study sessions (subject, duration in hrs/min, break type) and optional notes.
+3. **Check-In Inputs** — Student fills in sleep hours, selects an emotion, and provides pending tasks and days since last break.
+4. **Score Calculation** — `score.js` maps the emotion to a numeric stress value, then calculates a total burnout score (0–100) and a separate academic productivity score (0–100%).
+5. **AI Generation** — A time-aware prompt is built in `groq.js` and sent to Groq AI. The response is parsed into three sections: Insight, Schedule, and Habit Feedback.
+6. **Output** — Results are rendered inline in the page (or in a fallback modal) with color-coded score card, circular productivity indicator, recovery schedule, and habit analysis.
+7. **Storage** — The full check-in record (including productivity and AI advice) is saved to Firestore under the device's unique ID.
+8. **History** — The last 7 check-ins are displayed in the history list; clicking any entry opens a detail popup.
+
+---
+
+## 🎭 Emotion-to-Value Mapping
+| Emotion | Stress Value |
 |---|---|
 | Energetic | 1 |
 | Normal | 3 |
@@ -70,18 +103,20 @@ The app follows a **Human-to-Machine Pipeline**:
 | Exhausted | 8 |
 | Overwhelmed | 10 |
 
-### Burnout Score Ranges
+---
+
+## 📊 Burnout Score Ranges
 | Score | Level | Action |
 |---|---|---|
-| 0 - 33 | LOW | Keep going! 🌱 |
-| 34 - 66 | MODERATE | Take a break soon! ☕ |
-| 67 - 100 | HIGH | Rest immediately! 🛑 |
+| 0 – 33 | LOW | Keep going! 🌱 |
+| 34 – 66 | MODERATE | Take a break soon! ☕ |
+| 67 – 100 | HIGH | Rest immediately! 🛑 |
 
 ---
 
 ## 🧮 Scoring Methodology (`score.js`)
 
-The total burnout score is the **sum of 6 independent factors**, each capped at their max. A special **"just started" guard** applies when a student has 0 study hours and no sessions logged — only Sleep + Stress are counted, so a fresh student isn't unfairly penalized.
+The total burnout score is the **sum of 6 independent factors**, each capped at their maximum. A special **"just started" early return** applies when a student has 0 study hours and no sessions logged — only Sleep + Stress are counted, preventing unfair penalties for fresh students.
 
 > **Total = Sleep + Study + Stress + Tasks + Break + Session Habit** (max 100)
 
@@ -105,7 +140,7 @@ Under 1 hr = no risk. The **sweet spot is 2–4 hrs**. Over 6 hrs is dangerous.
 
 | Study Time | Score |
 |---|---|
-| < 1 hr (e.g. 30 min) | ~0 pts ✅ |
+| < 1 hr | ~0 pts ✅ |
 | 1–4 hrs | 0–10 pts (healthy range) |
 | 4–6 hrs | 10–20 pts (getting risky) |
 | 6–10 hrs | 20–25 pts (high risk zone) |
@@ -128,11 +163,9 @@ Formula: `(stressValue / 10) × 30`
 ---
 
 ### 4. 📋 Tasks Score — *Max 10 pts*
-Realistic for students — **5+ pending tasks** already feels crushing.
-
 | Pending Tasks | Score |
 |---|---|
-| 0–2 tasks | 0–2 pts (barely anything) |
+| 0–2 tasks | 0–2 pts |
 | 3–5 tasks | 2–7 pts (building pressure) |
 | 5+ tasks | 7–10 pts (near max quickly) |
 
@@ -143,65 +176,193 @@ How long since the student last took a **full rest day**.
 
 | Days Since Break | Score |
 |---|---|
-| 0 days (just started / just rested) | 0 pts ✅ |
+| 0 days | 0 pts ✅ |
 | 1 day | 1 pt (very light) |
 | 2–4 days | 1–7 pts (rising risk) |
 | 5+ days | 7–10 pts (serious) |
 
-> 💡 A **"Just Started Today 🌱"** quick-select button is available so new students can easily set this to 0 without confusion.
+> 💡 The **"Just Started Today 🌱"** quick-select button sets this to 0 automatically.
 
 ---
 
 ### 6. ⏱️ Session Habit Penalty — *Max 10 pts*
 Penalizes sessions where the student studied without proper breaks.
 
-| Break Taken | Penalty |
+| Break Taken | Penalty per Hour |
 |---|---|
-| Proper breaks ✅ | 0 pts per hour |
-| Short breaks only | 0.5 pts per hour |
-| No breaks at all | 1.5 pts per hour |
+| Proper breaks ✅ | 0 pts |
+| Short breaks only | 0.5 pts |
+| No breaks at all | 1.5 pts |
 
 Cap: `Math.min(totalPenalty, 10)`
 
 ---
 
 ### ⚡ "Just Started" Early Return
-If `study === 0` and no sessions are logged, the score is calculated using **only Sleep + Stress**. This prevents a fresh student from being falsely penalized for tasks and breaks they haven't accumulated yet.
+If `study === 0` and no sessions are logged, only **Sleep + Stress** are summed. Tasks, break, and session penalties are all skipped.
 
 ---
 
-### 📈 Productivity Score (`calculateProductivityScore`)
-A separate metric (0–100%) reflecting *how academically effective* the day was — not the same as burnout risk.
+## 📈 Productivity Score (`calculateProductivityScore`)
 
+A separate metric (0–100%) reflecting *how academically effective* the study session was — not the same as burnout risk. Displayed as an animated SVG circular ring with a label and contextual message.
+
+### Calculation Model
+`Productivity = Habit Quality × Burnout Efficiency Multiplier`
+
+**Habit Quality Base (starts at 60):**
 | Factor | Effect |
 |---|---|
-| Study hours | Diminishing returns (curve peaks ~80% at 6 hrs) |
-| Pending tasks | −3 pts per task, capped at −40 pts |
-| Sessions w/ proper breaks | +up to 15 pts bonus |
-| Sessions w/ no breaks | −up to 10 pts penalty |
+| Sleep ≥ 7 hrs | +10 pts |
+| Sleep ≥ 6 hrs | +4 pts |
+| Sleep < 5 hrs | −8 pts |
+| Stress ≤ 3 | +6 pts |
+| Stress ≤ 5 | +2 pts |
+| No pending tasks | +5 pts |
+| Study hours | Diminishing returns curve, up to +25 pts |
+| Each pending task | −1.5 pts, capped at −12 pts |
+| Sessions w/ proper breaks | +up to 15 pts |
+| Long sessions w/ no breaks | −up to 12 pts |
+| Short sessions w/ no breaks | −up to 2 pts |
+| Short breaks only | −up to 4 pts |
+
+Habit Quality is clamped between **35 and 100**.
+
+**Burnout Efficiency Multiplier:**
+| Burnout Score | Multiplier Range |
+|---|---|
+| 0–33 (LOW) | 85–100% |
+| 34–66 (MODERATE) | 55–85% |
+| 67–100 (HIGH) | 15–55% |
+
+**Edge Cases:**
+- If `study === 0` or no sessions logged → productivity capped at **5%**
+- If `burnoutScore >= 95` → productivity capped at **20%**
+
+**Productivity Labels:**
+| Productivity % | Label | Meaning |
+|---|---|---|
+| ≥ 60% | Peak Performance | Sharp, ready for complex tasks |
+| 30–59% | Moderate Efficiency | Manageable but wearing thin |
+| < 30% | Impaired Function | Critically low, rest required |
+
+> Emotion-specific messages are also applied (e.g., "Exhausted" + <30% triggers a dedicated shutdown message).
+
+---
+
+## 🤖 AI Advice System (`groq.js`)
+
+### Time-Aware Scheduling (5-Zone Classifier)
+The `buildPrompt()` function reads the current hour and assigns one of 5 zones:
+
+| Zone | Hours | Schedule Slots | Interval |
+|---|---|---|---|
+| Late Night | 11 PM – 5 AM | 3 slots | 15 min |
+| Early Night | 9 PM – 11 PM | 4 slots | 20 min |
+| Evening | 6 PM – 9 PM | 5 slots | 30 min |
+| Peak Study | 11 AM – 6 PM | 6 slots | 45 min |
+| Morning | 5 AM – 11 AM | 5 slots | 30 min |
+
+**Late Night Hard Override** — When checked in between 11 PM and 5 AM, the AI is instructed to issue only a 3-step wind-down plan directing the student to sleep. No journaling, tea, music, or other wakefulness-extending activities are permitted.
+
+**Schedule Start Rounding:**
+- Late Night → rounded to the next 5-minute mark (urgency).
+- All other zones → rounded to the next :00 or :30 mark (structured).
+
+### AI Response Parsing
+The raw AI response is split into three sections by the `app.js` controller:
+1. **AI Advisor Insight** — Text before the `SCHEDULE:` marker.
+2. **Recovery Schedule** — Content between `SCHEDULE:` and `HABIT_FEEDBACK:`.
+3. **Study Habit Analysis** — Content after `HABIT_FEEDBACK:` (only present when study sessions were logged).
+
+### Wellness Tip (`getWellnessTip`)
+A separate Groq call on page load returns a single short wellness message displayed in the hero banner. The prompt explicitly avoids inspirational-poster language and aims for casual, human-sounding text.
+
+---
+
+## ☁️ Firebase Integration (`firebase.js`)
+
+### Device-Based User Isolation
+Each browser session is assigned a unique device ID generated via `crypto.randomUUID()` (with a manual UUID fallback for older browsers) and stored in `localStorage` under `nightr41d_device_id`. All Firestore data is stored under:
+
+```
+users/{deviceId}/checkins/{docId}
+```
+
+This ensures complete isolation between devices without requiring user authentication.
+
+### Available Functions
+| Function | Description |
+|---|---|
+| `saveCheckin(data)` | Saves a new check-in document with a server timestamp |
+| `getHistory()` | Retrieves the last 7 check-ins ordered by timestamp descending |
+| `clearHistory()` | Batch-deletes all check-ins for the current device |
+| `deleteCheckin(id)` | Deletes a single check-in document by ID |
+
+### Saved Check-In Record Structure
+```json
+{
+  "date": "4/27/2026",
+  "time": "02:30 PM",
+  "sleep": 6,
+  "study": 2.5,
+  "emotion": "Stressed",
+  "stressValue": 6,
+  "tasks": 3,
+  "lastBreak": 2,
+  "score": 55,
+  "productivity": 42,
+  "aiAdvice": "...",
+  "timestamp": "<Firestore ServerTimestamp>"
+}
+```
+
+---
+
+## 🧪 Test Files
+
+| File | Purpose |
+|---|---|
+| `test_logic_standalone.js` | Standalone test for time-zone classification and schedule start calculation across 5 time cases without any imports |
+| `test_prompt_logic.js` | Tests the full `buildPrompt()` function by mocking `Date` for each time zone and verifying schedule slot count, interval, start time, and detected mode |
+| `test_score.js` | Unit tests for `calculateProductivityScore()` across 5 cases covering low burnout, moderate burnout, high burnout, ideal conditions, and edge cases |
 
 ---
 
 ## 📝 System Description
 
-The system is a daily burnout check-in designed to help students monitor not only how much they study, but also how they feel and behave while studying, forming a complete input-to-output flow that turns simple logs into meaningful insights and guidance. At the top, the "Daily Wellness Reminder" serves as a gentle mental health prompt, encouraging users to stay calm, avoid overworking, and focus on one task at a time. Below it, the main section titled "What Did You Study Today?" allows users to log their study activities by entering the subject, specifying the duration in hours or minutes, and indicating whether they took breaks during their session, with more detailed options such as "Yes – took proper breaks," "Short breaks only," and "No breaks at all," which helps the system evaluate not just how long they studied but how healthy their study habits were. Users can add multiple subjects to reflect their full day and use the remove button to correct entries, while the "Additional Notes" section lets them describe their experience — such as feeling distracted, tired, or productive — providing deeper insight into their mental state beyond numerical data.
+The system is a daily burnout check-in designed to help students monitor not only how much they study, but also how they feel and behave while studying — forming a complete input-to-output flow that turns simple logs into meaningful insights and actionable guidance.
 
-The system is further enhanced by additional inputs where the user provides personal and study-related data, and the system analyzes it to generate a burnout score, insights, and a recovery plan. At the top, the user is asked how many hours they slept, which is a key factor because lack of sleep is one of the strongest indicators of burnout and fatigue. Below that, the "How are you feeling right now?" section allows the user to select their current emotional state, such as energetic, normal, stressed, exhausted, or overwhelmed. This acts as a quick self-assessment and gives the system an immediate understanding of the user's mental condition. The next input asks for the number of pending tasks or assignments, which helps measure workload pressure, while the "days since you last took a full break" field tracks how long the user has gone without proper rest — another important burnout signal. To make this easier for students who are just beginning their day, a quick-select button labeled "Just Started Today 🌱" is available, automatically setting the value to zero so new students are not unfairly penalized. All of these inputs are combined when the user clicks "Calculate Burnout Risk," which triggers the system to evaluate their condition.
+At the top, the **Daily Wellness Reminder** displays an AI-generated message fetched fresh on each page load, encouraging users to stay calm and focused. Below it, the **"What Did You Study Today?"** section lets users log multiple study activities by entering the subject, specifying duration in hours or minutes using a unit toggle, and selecting their break behavior from detailed options: "Yes – took proper breaks," "Short breaks only," or "No breaks at all." This allows the system to evaluate not just study duration but actual study quality. A free-text **Additional Notes** field lets students describe their experience in their own words, which is passed directly into the AI prompt for richer, more contextual advice.
 
-After submission, the system produces a burnout score using a clear scoring logic: scores from 0 to 33 indicate low burnout with the message "You are doing great, keep it up," 34 to 66 indicate moderate burnout with "Slow down and take a break soon," and 67 to 100 indicate high burnout with "Please stop and rest immediately." To make the system more user-friendly, results are color-coded, where green means low risk, yellow means moderate, and red means high risk. The system then provides an "AI Advisor Insight," which explains the reasoning behind the score by connecting the user's inputs, such as having enough sleep, low study time, and a positive mood, making the feedback feel personalized rather than generic. Following that, the system generates a "Recovery Schedule," which is a structured and time-based plan designed to guide the user through the rest of their day, including activities such as short walks, focused study sessions, snack breaks, longer rest periods, and relaxation activities, helping the user maintain a balance between productivity and recovery. The system also calculates a separate Productivity Score from 0 to 100 percent that reflects how effective the student's study session was, factoring in study hours, pending tasks, and break habits, giving a clearer picture of academic performance beyond just burnout risk. The "Study Habit Analysis" section further evaluates how the user studied, reinforcing good habits like taking breaks and suggesting improvements where needed. Students are also motivated through a daily check-in Streak Counter that rewards consistency over time. Finally, the "Recent Check-Ins" section keeps a history of previous entries, showing timestamps, moods, burnout scores, and short summaries along with a clear history button for resetting records, allowing users to track patterns over time. Altogether, this system is designed not just to measure burnout, but to predict, explain, and actively help reduce it through personalized feedback and structured daily guidance.
+The second input section collects sleep hours, current emotional state, number of pending tasks, and days since the last full break. The **"Just Started Today 🌱"** quick-select button makes it easy for students at the start of their day to correctly set the break field to zero.
+
+After submission, the system calculates a **Burnout Score** (0–100) and a separate **Academic Productivity Score** (0–100%), both displayed with color-coded visual indicators. The productivity score is shown as an animated circular SVG ring with a label ("Peak Performance," "Moderate Efficiency," or "Impaired Function") and an emotion-aware contextual message.
+
+The **AI Advisor Insight** explains the score in a warm, personalized tone. The **Recovery Schedule** provides a time-structured, zone-aware plan for the rest of the day. When study sessions are logged, a **Study Habit Analysis** section provides direct, mentor-style feedback on break behavior and subject-specific patterns.
+
+All results are rendered inline on the page (with a fallback modal for legacy layouts). Every check-in is saved to Firebase Firestore, scoped to the device, and the last 7 entries appear in the **Recent Check-Ins** list. Clicking any history entry opens a popup showing the full record including the saved productivity score and AI insight.
+
+A **User Profile** feature lets students set their display name, which appears in the top bar as a personalized greeting. The **Search Bar** is present in the UI as a placeholder for a future feature.
+
+Altogether, this system is designed not just to measure burnout, but to predict, explain, and actively help reduce it through personalized feedback and structured daily guidance.
 
 ---
 
 ## 👥 Team Members
-- **Mark Joshua Baluran** — Lead Developer (JS Logic, Firebase, Groq AI, Score Calculator)
-- **Jimmie Em Ilaguno** — UI Developer (CSS Design, Emotion Selector, Spinner)
+- **Mark Joshua Baluran** — Lead Developer (JS Logic, Firebase, Groq AI, Score Calculator, App Controller)
+- **Jimmie Em Ilaguno** — UI Developer (CSS Design, Emotion Selector, Productivity Circle, Spinner)
 - **Kielah Manlapid Pepito** — Documentation Specialist (README, Scripting, Demo)
 - **Jhon Daryl Sawayan** — Dev Tester (Error Detection, Unnecessary Feature Filtering, Brainstormer)
+
+---
 
 ## 📜 Attribution
 - **Firebase** by Google
 - **Groq AI** for lightning-fast inference
-- **LLaMA 3** by Meta AI
+- **LLaMA 3.3 (70B Versatile)** by Meta AI
+
+---
 
 ## 📄 License
 This project is licensed under the MIT License.
