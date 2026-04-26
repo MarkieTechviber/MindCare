@@ -19,7 +19,6 @@
 - ☁️ **Cloud Sync** — Check-in history is saved to and retrieved from Firebase Firestore, scoped per device using a unique device ID.
 - 📂 **History Popup** — Clicking any history entry opens a detail popup showing all saved metrics including productivity score and AI insight.
 - 👤 **User Profile** — Users can set and update their display name, stored in `localStorage`, shown in the top bar and profile chip.
-- 🔍 **Search Bar** — UI search element present for future expansion (demo placeholder active).
 - 💡 **Wellness Tip of the Day** — A dynamic AI-generated daily reminder fetched from Groq on page load.
 - 🌱 **"Just Started Today" Quick-Select** — A convenience button that sets "days since last break" to 0 so new students aren't penalized unfairly.
 - ⏱️ **Hours/Minutes Unit Toggle** — Each study session entry supports toggling between hours and minutes for flexible time input.
@@ -40,22 +39,32 @@
 
 ## 📂 File Structure
 ```
-project/
-├── index.html              # Main application interface
-├── css/
-│   ├── style.css           # Global styles and design system
-│   └── components.css      # Component-specific styling
-├── js/
-│   ├── app.js              # Main controller (UI, events, rendering)
-│   ├── firebase.js         # Firestore integration (save, get, clear, delete)
-│   ├── groq.js             # Groq AI integration (advice + wellness tip)
-│   └── score.js            # Burnout score + productivity score logic
-├── tests/
-│   ├── test_logic_standalone.js   # Standalone time-zone schedule logic test
-│   ├── test_prompt_logic.js       # Full prompt builder test with mock dates
-│   └── test_score.js              # Productivity score unit tests
-├── firestore.rules         # Firebase security rules
-└── README.md               # Project documentation
+.firebase/
+├── hosting..cache          # Firebase hosting cache (auto-generated)
+css/
+└── style.css               # Global styles and design system
+js/
+├── app.js                  # Main controller (UI, events, rendering)
+├── firebase.js             # Firestore integration (save, get, clear, delete)
+├── groq.js                 # Groq AI integration (advice + wellness tip)
+└── score.js                # Burnout score + productivity score logic
+public/
+├── 404.html                # Firebase hosting 404 fallback page
+└── index.html              # Firebase-hosted copy of main interface
+scratch/
+├── test_logic_standalone.js   # Standalone time-zone schedule logic test
+├── test_prompt_logic.js       # Full prompt builder test with mock dates
+└── test_score.js              # Productivity score unit tests
+.env                        # Local environment variables (not committed)
+.env.example                # Environment variable template
+.firebaserc                 # Firebase project alias config
+.gitignore                  # Git ignore rules
+firebase-debug.log          # Firebase CLI debug log (auto-generated)
+firebase.json               # Firebase hosting & Firestore config
+firestore.indexes.json      # Firestore composite index definitions
+firestore.rules             # Firestore security rules
+index.html                  # Main application entry point (local dev)
+README.md                   # Project documentation
 ```
 
 ---
@@ -321,11 +330,11 @@ This ensures complete isolation between devices without requiring user authentic
 
 ## 🧪 Test Files
 
-| File | Purpose |
-|---|---|
-| `test_logic_standalone.js` | Standalone test for time-zone classification and schedule start calculation across 5 time cases without any imports |
-| `test_prompt_logic.js` | Tests the full `buildPrompt()` function by mocking `Date` for each time zone and verifying schedule slot count, interval, start time, and detected mode |
-| `test_score.js` | Unit tests for `calculateProductivityScore()` across 5 cases covering low burnout, moderate burnout, high burnout, ideal conditions, and edge cases |
+| File | Location | Purpose |
+|---|---|---|
+| `test_logic_standalone.js` | `scratch/` | Standalone test for time-zone classification and schedule start calculation across 5 time cases — no imports required |
+| `test_prompt_logic.js` | `scratch/` | Tests the full `buildPrompt()` function by mocking `Date` for each time zone and verifying schedule slot count, interval, start time, and detected mode |
+| `test_score.js` | `scratch/` | Unit tests for `calculateProductivityScore()` across 5 cases covering low burnout, moderate burnout, high burnout, ideal conditions, and edge cases |
 
 ---
 
