@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## 📋 Project Overview
-**NightR41d.exe** is a web-based Student Burnout Prevention System designed to help students monitor their academic stress levels. By conducting daily emotional and workload check-ins, the app provides AI-generated personalized advice to help prevent burnout before it happens.
+**MindCare** is a web-based Student Burnout Prevention System designed to help students monitor their academic stress levels. By conducting daily emotional and workload check-ins, the app provides AI-generated personalized advice to help prevent burnout before it happens.
 
 ---
 
