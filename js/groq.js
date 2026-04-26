@@ -4,7 +4,7 @@
  */
 
 // Using Groq API for personalized advice (Remember to keep your API key secret!)
-const GROQ_API_KEY = ""; // PASTE_YOUR_KEY_HERE
+const GROQ_API_KEY = "i have my api on it but git is strict"; // PASTE_YOUR_KEY_HERE
 
 /**
  * Builds a prompt for Groq AI based on student data.
