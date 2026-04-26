@@ -30,14 +30,20 @@ function initStudySessions() {
     document.getElementById("btn-add-session").addEventListener("click", () => {
         const list = document.getElementById("session-list");
         const index = list.querySelectorAll(".session-row").length;
-        
+
         const row = document.createElement("div");
         row.className = "session-row";
         row.setAttribute("data-index", index);
         row.innerHTML = `
             <div class="session-fields">
                 <input type="text" class="session-subject" placeholder="Subject (e.g. Math)" />
-                <input type="number" class="session-hours" placeholder="Hrs" min="0" max="24" step="0.5" />
+                <div class="hours-unit-wrapper">
+                    <input type="number" class="session-hours" placeholder="Value" min="0" step="0.5" />
+                    <div class="unit-toggle">
+                        <button type="button" class="unit-btn active" data-unit="hours">hrs</button>
+                        <button type="button" class="unit-btn" data-unit="minutes">min</button>
+                    </div>
+                </div>
                 <select class="session-break">
                     <option value="">Breaks?</option>
                     <option value="yes">Yes</option>
@@ -48,15 +54,31 @@ function initStudySessions() {
             </div>
         `;
         list.appendChild(row);
-        
-        row.querySelector(".btn-remove-session").addEventListener("click", function() {
+
+        row.querySelector(".btn-remove-session").addEventListener("click", function () {
             removeSession(this);
+        });
+
+        row.querySelectorAll(".unit-btn").forEach(btn => {
+            btn.addEventListener("click", function () {
+                row.querySelectorAll(".unit-btn").forEach(b => b.classList.remove("active"));
+                this.classList.add("active");
+            });
         });
     });
 
     document.querySelectorAll(".btn-remove-session").forEach(btn => {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", function () {
             removeSession(this);
+        });
+    });
+
+    document.querySelectorAll(".session-row").forEach(row => {
+        row.querySelectorAll(".unit-btn").forEach(btn => {
+            btn.addEventListener("click", function () {
+                row.querySelectorAll(".unit-btn").forEach(b => b.classList.remove("active"));
+                this.classList.add("active");
+            });
         });
     });
 }
@@ -75,11 +97,14 @@ function collectStudySessions() {
 
     rows.forEach(row => {
         const subject = row.querySelector(".session-subject").value.trim();
-        const hours = parseFloat(row.querySelector(".session-hours").value);
+        const rawValue = parseFloat(row.querySelector(".session-hours").value);
+        const activeUnitBtn = row.querySelector(".unit-btn.active");
+        const unit = activeUnitBtn ? activeUnitBtn.getAttribute("data-unit") : "hours";
+        const hours = unit === "minutes" ? rawValue / 60 : rawValue;
         const breakTaken = row.querySelector(".session-break").value;
 
-        if (subject && !isNaN(hours)) {
-            sessions.push({ subject, hours, breakTaken: breakTaken || "unknown" });
+        if (subject && !isNaN(rawValue)) {
+            sessions.push({ subject, hours, rawValue, unit, breakTaken: breakTaken || "unknown" });
         }
     });
 
@@ -107,15 +132,28 @@ async function handleCheckin(e) {
     e.preventDefault();
 
     // 1. Gather Inputs
+    const studyData = collectStudySessions();
     const sleepHours = parseFloat(document.getElementById('sleep-hours').value);
-    const studyHours = parseFloat(document.getElementById('study-hours').value);
     const pendingTasks = parseInt(document.getElementById('pending-tasks').value);
     const daysSinceBreak = parseInt(document.getElementById('days-break').value);
     const emotionLabel = selectedEmotion;
 
+    // Calculate total study hours from sessions
+    const studyHours = studyData.sessions.reduce((sum, s) => sum + s.hours, 0);
+
     // 2. Validate
     if (!emotionLabel) {
         alert("Please select how you are feeling!");
+        return;
+    }
+
+    if (studyData.sessions.length === 0) {
+        alert("Please log at least one study session!");
+        return;
+    }
+
+    if (isNaN(sleepHours) || isNaN(pendingTasks) || isNaN(daysSinceBreak)) {
+        alert("Please fill in all required fields with valid numbers!");
         return;
     }
 
@@ -130,7 +168,6 @@ async function handleCheckin(e) {
 
     try {
         // 4. Calculate Score
-        const studyData = collectStudySessions();
         const stressValue = emotionToValue(emotionLabel);
         const score = calculateBurnoutScore({
             sleep: sleepHours,
@@ -176,8 +213,8 @@ async function handleCheckin(e) {
         const scheduleSplit = aiAdvice.split("SCHEDULE:");
         const adviceMessage = scheduleSplit[0].trim();
         const scheduleRaw = scheduleSplit[1] ? scheduleSplit[1].split("HABIT_FEEDBACK:")[0].trim() : null;
-        const habitFeedback = aiAdvice.includes("HABIT_FEEDBACK:") 
-            ? aiAdvice.split("HABIT_FEEDBACK:")[1].trim() 
+        const habitFeedback = aiAdvice.includes("HABIT_FEEDBACK:")
+            ? aiAdvice.split("HABIT_FEEDBACK:")[1].trim()
             : null;
 
         aiAdviceTextEl.textContent = adviceMessage;
@@ -250,7 +287,7 @@ async function renderHistory() {
 
         const div = document.createElement('div');
         div.className = 'history-item';
-        
+
         // Extract a preview from the AI advice (first sentence)
         const advicePreview = entry.aiAdvice ? entry.aiAdvice.split('.')[0] + '.' : '';
 
@@ -286,4 +323,3 @@ async function renderHistory() {
         });
     });
 }
-

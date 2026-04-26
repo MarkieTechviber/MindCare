@@ -3,8 +3,8 @@
  * Generates personalized burnout prevention advice + recovery schedule + habit feedback.
  */
 
-// Using Groq API for personalized advice
-const GROQ_API_KEY = "put your kawai ai api here";
+// Using Groq API for personalized advice (Remember to keep your API key secret!)
+const GROQ_API_KEY = ""; // PASTE_YOUR_KEY_HERE
 
 /**
  * Builds a prompt for Groq AI based on student data.
@@ -42,7 +42,7 @@ export function buildPrompt(emotionLabel, stressValue, score, inputs, studyData 
 
     if (studyData && studyData.sessions && studyData.sessions.length > 0) {
         const sessionLines = studyData.sessions.map(s =>
-            `- ${s.subject}: ${s.hours} hours, breaks: ${s.breakTaken}`
+            `- ${s.subject}: ${s.rawValue} ${s.unit} (${s.hours.toFixed(2)} hrs), breaks: ${s.breakTaken}`
         ).join("\n");
 
         studyContext = `
@@ -140,7 +140,7 @@ export async function getWellnessTip() {
                 model: "llama-3.3-70b-versatile",
                 messages: [{
                     role: "user",
-                    content: `Generate one single short and genuinely helpful reminder or quote for a student about mental wellness or academic improvement. It must be original, warm, and encouraging. Maximum 2 sentences. No introductions, no labels, no quotation marks, just the reminder itself.`
+                    content: `You're a chill, relatable friend texting a student in the morning. Write ONE short wellness reminder that sounds like a real person — casual, warm, and a little conversational. Avoid inspirational-poster language, avoid words like "triumph", "testament", "resilience", "navigate", or "unfolds". Keep it simple and honest, like something you'd actually say to a friend who's stressed about school. 1-2 sentences max. No quotation marks, no labels, no intro — just say it directly.`
                 }],
                 max_tokens: 80,
                 temperature: 0.9
@@ -152,4 +152,3 @@ export async function getWellnessTip() {
         return "Your consistency matters more than your speed. Keep going, one step at a time. 💛";
     }
 }
-
